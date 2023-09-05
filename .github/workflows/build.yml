@@ -2,9 +2,9 @@ name: Test/Build Android
 
 on:
   pull_request:
-    branches: [main]
+    branches: [private-build]
   push:
-    branches: [main]
+    branches: [private-build]
 
 jobs:
   build:

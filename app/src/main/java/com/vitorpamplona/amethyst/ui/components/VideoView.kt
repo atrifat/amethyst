@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Rect
 import android.graphics.drawable.Drawable
 import android.net.Uri
-import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -59,8 +58,6 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
-import coil.imageLoader
-import coil.request.ImageRequest
 import com.linc.audiowaveform.infiniteLinearGradient
 import com.vitorpamplona.amethyst.PlaybackClientController
 import com.vitorpamplona.amethyst.model.ConnectivityType
@@ -98,24 +95,23 @@ fun LoadThumbAndThenVideoView(
     onDialog: ((Boolean) -> Unit)? = null
 ) {
     var loadingFinished by remember { mutableStateOf<Pair<Boolean, Drawable?>>(Pair(false, null)) }
-
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
-        launch(Dispatchers.IO) {
-            try {
-                val request = ImageRequest.Builder(context).data(thumbUri).build()
-                val myCover = context.imageLoader.execute(request).drawable
-                if (myCover != null) {
-                    loadingFinished = Pair(true, myCover)
+        accountViewModel.loadThumb(
+            context,
+            thumbUri,
+            onReady = {
+                if (it != null) {
+                    loadingFinished = Pair(true, it)
                 } else {
                     loadingFinished = Pair(true, null)
                 }
-            } catch (e: Exception) {
-                Log.e("VideoView", "Fail to load cover $thumbUri", e)
+            },
+            onError = {
                 loadingFinished = Pair(true, null)
             }
-        }
+        )
     }
 
     if (loadingFinished.first) {
@@ -158,24 +154,26 @@ fun VideoView(
     authorName: String? = null,
     nostrUriCallback: String? = null,
     onDialog: ((Boolean) -> Unit)? = null,
+    onControllerVisibilityChanged: ((Boolean) -> Unit)? = null,
     accountViewModel: AccountViewModel,
     alwaysShowVideo: Boolean = false
 ) {
     val defaultToStart by remember(videoUri) { mutableStateOf(DefaultMutedSetting.value) }
 
     VideoViewInner(
-        videoUri,
-        defaultToStart,
-        title,
-        thumb,
-        roundedCorner,
-        waveform,
-        artworkUri,
-        authorName,
-        nostrUriCallback,
-        alwaysShowVideo,
-        accountViewModel,
-        onDialog
+        videoUri = videoUri,
+        defaultToStart = defaultToStart,
+        title = title,
+        thumb = thumb,
+        roundedCorner = roundedCorner,
+        waveform = waveform,
+        artworkUri = artworkUri,
+        authorName = authorName,
+        nostrUriCallback = nostrUriCallback,
+        alwaysShowVideo = alwaysShowVideo,
+        accountViewModel = accountViewModel,
+        onControllerVisibilityChanged = onControllerVisibilityChanged,
+        onDialog = onDialog
     )
 }
 
@@ -193,6 +191,7 @@ fun VideoViewInner(
     nostrUriCallback: String? = null,
     alwaysShowVideo: Boolean = false,
     accountViewModel: AccountViewModel,
+    onControllerVisibilityChanged: ((Boolean) -> Unit)? = null,
     onDialog: ((Boolean) -> Unit)? = null
 ) {
     val automaticallyStartPlayback = remember {
@@ -251,6 +250,7 @@ fun VideoViewInner(
                     keepPlaying = keepPlaying,
                     automaticallyStartPlayback = automaticallyStartPlayback,
                     activeOnScreen = activeOnScreen,
+                    onControllerVisibilityChanged = onControllerVisibilityChanged,
                     onDialog = onDialog
                 )
             }
@@ -518,6 +518,7 @@ private fun RenderVideoPlayer(
     keepPlaying: MutableState<Boolean>,
     automaticallyStartPlayback: MutableState<Boolean>,
     activeOnScreen: MutableState<Boolean>,
+    onControllerVisibilityChanged: ((Boolean) -> Unit)? = null,
     onDialog: ((Boolean) -> Unit)?
 ) {
     ControlWhenPlayerIsActive(controller, keepPlaying, automaticallyStartPlayback, activeOnScreen)
@@ -562,8 +563,11 @@ private fun RenderVideoPlayer(
                         }
                     }
                     setControllerVisibilityListener(
-                        PlayerView.ControllerVisibilityListener {
-                            controllerVisible.value = it == View.VISIBLE
+                        PlayerView.ControllerVisibilityListener { visible ->
+                            controllerVisible.value = visible == View.VISIBLE
+                            onControllerVisibilityChanged?.let { callback ->
+                                callback(visible == View.VISIBLE)
+                            }
                         }
                     )
                 }
@@ -686,29 +690,31 @@ fun ControlWhenPlayerIsActive(
     automaticallyStartPlayback: MutableState<Boolean>,
     activeOnScreen: MutableState<Boolean>
 ) {
-    // active means being fully visible
-    if (activeOnScreen.value) {
-        // should auto start video from settings?
-        if (!automaticallyStartPlayback.value) {
-            if (controller.isPlaying) {
-                // if it is visible, it's playing but it wasn't supposed to start automatically.
+    LaunchedEffect(key1 = activeOnScreen.value) {
+        // active means being fully visible
+        if (activeOnScreen.value) {
+            // should auto start video from settings?
+            if (!automaticallyStartPlayback.value) {
+                if (controller.isPlaying) {
+                    // if it is visible, it's playing but it wasn't supposed to start automatically.
+                    controller.pause()
+                }
+            } else if (!controller.isPlaying) {
+                // if it is visible, was supposed to start automatically, but it's not
+
+                // If something else is playing, play on mute.
+                if (keepPlayingMutex != null && keepPlayingMutex != controller) {
+                    controller.volume = 0f
+                }
+                controller.play()
+            }
+        } else {
+            // Pauses the video when it becomes invisible.
+            // Destroys the video later when it Disposes the element
+            // meanwhile if the user comes back, the position in the track is saved.
+            if (!keepPlaying.value) {
                 controller.pause()
             }
-        } else if (!controller.isPlaying) {
-            // if it is visible, was supposed to start automatically, but it's not
-
-            // If something else is playing, play on mute.
-            if (keepPlayingMutex != null && keepPlayingMutex != controller) {
-                controller.volume = 0f
-            }
-            controller.play()
-        }
-    } else {
-        // Pauses the video when it becomes invisible.
-        // Destroys the video later when it Disposes the element
-        // meanwhile if the user comes back, the position in the track is saved.
-        if (!keepPlaying.value) {
-            controller.pause()
         }
     }
 

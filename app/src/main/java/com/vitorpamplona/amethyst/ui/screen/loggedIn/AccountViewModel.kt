@@ -1,6 +1,7 @@
 package com.vitorpamplona.amethyst.ui.screen.loggedIn
 
 import android.content.Context
+import android.graphics.drawable.Drawable
 import android.util.Log
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
@@ -11,6 +12,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.distinctUntilChanged
 import androidx.lifecycle.map
 import androidx.lifecycle.viewModelScope
+import coil.imageLoader
+import coil.request.ImageRequest
 import com.vitorpamplona.amethyst.model.Account
 import com.vitorpamplona.amethyst.model.AccountState
 import com.vitorpamplona.amethyst.model.AddressableNote
@@ -622,13 +625,6 @@ class AccountViewModel(val account: Account) : ViewModel(), Dao {
         }
     }
 
-    fun checkIfOnline(url: String, onResult: (Boolean) -> Unit) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val isOnline = OnlineChecker.isOnline(url)
-            onResult(isOnline)
-        }
-    }
-
     fun urlPreview(url: String, onResult: suspend (UrlPreviewState) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             UrlCachedPreviewer.previewInfo(url, onResult)
@@ -918,6 +914,24 @@ class AccountViewModel(val account: Account) : ViewModel(), Dao {
     override fun onCleared() {
         collectorJob?.cancel()
         super.onCleared()
+    }
+
+    fun loadThumb(
+        context: Context,
+        thumbUri: String,
+        onReady: (Drawable?) -> Unit,
+        onError: (String?) -> Unit
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val request = ImageRequest.Builder(context).data(thumbUri).build()
+                val myCover = context.imageLoader.execute(request).drawable
+                onReady(myCover)
+            } catch (e: Exception) {
+                Log.e("VideoView", "Fail to load cover $thumbUri", e)
+                onError(e.message)
+            }
+        }
     }
 }
 

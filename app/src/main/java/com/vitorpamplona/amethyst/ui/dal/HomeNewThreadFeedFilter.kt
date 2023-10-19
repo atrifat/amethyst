@@ -17,12 +17,13 @@ import com.vitorpamplona.quartz.events.TextNoteEvent
 import com.vitorpamplona.quartz.utils.TimeUtils
 
 class HomeNewThreadFeedFilter(val account: Account) : AdditiveFeedFilter<Note>() {
+
     override fun feedKey(): String {
         return account.userProfile().pubkeyHex + "-" + account.defaultHomeFollowList
     }
 
     override fun showHiddenKey(): Boolean {
-        return account.defaultHomeFollowList == PeopleListEvent.blockList
+        return account.defaultHomeFollowList == PeopleListEvent.blockListFor(account.userProfile().pubkeyHex)
     }
 
     override fun feed(): List<Note> {

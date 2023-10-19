@@ -3,6 +3,9 @@ package com.vitorpamplona.amethyst.ui.screen.loggedIn
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandIn
+import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -10,7 +13,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.*
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -41,6 +43,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -54,8 +57,15 @@ import com.vitorpamplona.amethyst.ui.buttons.ChannelFabColumn
 import com.vitorpamplona.amethyst.ui.buttons.NewCommunityNoteButton
 import com.vitorpamplona.amethyst.ui.buttons.NewImageButton
 import com.vitorpamplona.amethyst.ui.buttons.NewNoteButton
-import com.vitorpamplona.amethyst.ui.navigation.*
+import com.vitorpamplona.amethyst.ui.navigation.AccountSwitchBottomSheet
+import com.vitorpamplona.amethyst.ui.navigation.AppBottomBar
+import com.vitorpamplona.amethyst.ui.navigation.AppNavigation
+import com.vitorpamplona.amethyst.ui.navigation.AppTopBar
+import com.vitorpamplona.amethyst.ui.navigation.DrawerContent
+import com.vitorpamplona.amethyst.ui.navigation.FollowListViewModel
+import com.vitorpamplona.amethyst.ui.navigation.Route
 import com.vitorpamplona.amethyst.ui.navigation.Route.Companion.InvertedLayouts
+import com.vitorpamplona.amethyst.ui.navigation.getRouteWithArguments
 import com.vitorpamplona.amethyst.ui.note.UserReactionsViewModel
 import com.vitorpamplona.amethyst.ui.screen.AccountState
 import com.vitorpamplona.amethyst.ui.screen.AccountStateViewModel
@@ -68,7 +78,7 @@ import com.vitorpamplona.amethyst.ui.screen.NostrHomeFeedViewModel
 import com.vitorpamplona.amethyst.ui.screen.NostrHomeRepliesFeedViewModel
 import com.vitorpamplona.amethyst.ui.screen.NostrVideoFeedViewModel
 import com.vitorpamplona.amethyst.ui.screen.NotificationViewModel
-import com.vitorpamplona.amethyst.ui.screen.ThemeViewModel
+import com.vitorpamplona.amethyst.ui.screen.SharedPreferencesViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -77,7 +87,7 @@ import kotlin.math.abs
 fun MainScreen(
     accountViewModel: AccountViewModel,
     accountStateViewModel: AccountStateViewModel,
-    themeViewModel: ThemeViewModel
+    sharedPreferencesViewModel: SharedPreferencesViewModel
 ) {
     val scope = rememberCoroutineScope()
     var openBottomSheet by rememberSaveable { mutableStateOf(false) }
@@ -237,7 +247,7 @@ fun MainScreen(
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 val newOffset = bottomBarOffsetHeightPx.value + available.y
 
-                if (accountViewModel.account.settings.automaticallyHideNavigationBars == BooleanType.ALWAYS) {
+                if (accountViewModel.settings.automaticallyHideNavigationBars == BooleanType.ALWAYS) {
                     val newBottomBarOffset = if (navState.value?.destination?.route !in InvertedLayouts) {
                         newOffset.coerceIn(-bottomBarHeightPx, 0f)
                     } else {
@@ -317,13 +327,18 @@ fun MainScreen(
                     }
                 },
                 floatingActionButton = {
-                    FloatingButtons(
-                        navState,
-                        accountViewModel,
-                        accountStateViewModel,
-                        nav,
-                        navBottomRow
-                    )
+                    AnimatedVisibility(
+                        visible = shouldShow.value,
+                        enter = fadeIn() + expandIn { IntSize(width = 1, height = 1) }
+                    ) {
+                        FloatingButtons(
+                            navState,
+                            accountViewModel,
+                            accountStateViewModel,
+                            nav,
+                            navBottomRow
+                        )
+                    }
                 }
             ) {
                 Column(
@@ -346,7 +361,7 @@ fun MainScreen(
                         userReactionsStatsModel = userReactionsStatsModel,
                         navController = navController,
                         accountViewModel = accountViewModel,
-                        themeViewModel = themeViewModel
+                        sharedPreferencesViewModel = sharedPreferencesViewModel
                     )
                 }
             }
@@ -426,6 +441,10 @@ fun FloatingButtons(
     val accountState by accountStateViewModel.accountContent.collectAsState()
 
     when (accountState) {
+        is AccountState.Loading -> {
+            // Does nothing.
+        }
+
         is AccountState.LoggedInViewOnly -> {
             if (accountViewModel.loggedInWithExternalSigner()) {
                 WritePermissionButtons(navEntryState, accountViewModel, nav, navScrollToTop)

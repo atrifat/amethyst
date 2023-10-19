@@ -25,7 +25,47 @@ import com.vitorpamplona.quartz.encoders.ATag
 import com.vitorpamplona.quartz.encoders.HexKey
 import com.vitorpamplona.quartz.encoders.hexToByteArray
 import com.vitorpamplona.quartz.encoders.toHexKey
-import com.vitorpamplona.quartz.events.*
+import com.vitorpamplona.quartz.events.BookmarkListEvent
+import com.vitorpamplona.quartz.events.ChannelCreateEvent
+import com.vitorpamplona.quartz.events.ChannelMessageEvent
+import com.vitorpamplona.quartz.events.ChannelMetadataEvent
+import com.vitorpamplona.quartz.events.ChatMessageEvent
+import com.vitorpamplona.quartz.events.Contact
+import com.vitorpamplona.quartz.events.ContactListEvent
+import com.vitorpamplona.quartz.events.DeletionEvent
+import com.vitorpamplona.quartz.events.EmojiPackEvent
+import com.vitorpamplona.quartz.events.EmojiPackSelectionEvent
+import com.vitorpamplona.quartz.events.EmojiUrl
+import com.vitorpamplona.quartz.events.Event
+import com.vitorpamplona.quartz.events.FileHeaderEvent
+import com.vitorpamplona.quartz.events.FileStorageEvent
+import com.vitorpamplona.quartz.events.FileStorageHeaderEvent
+import com.vitorpamplona.quartz.events.GeneralListEvent
+import com.vitorpamplona.quartz.events.GenericRepostEvent
+import com.vitorpamplona.quartz.events.GiftWrapEvent
+import com.vitorpamplona.quartz.events.Gossip
+import com.vitorpamplona.quartz.events.HTTPAuthorizationEvent
+import com.vitorpamplona.quartz.events.IdentityClaim
+import com.vitorpamplona.quartz.events.LiveActivitiesChatMessageEvent
+import com.vitorpamplona.quartz.events.LnZapEvent
+import com.vitorpamplona.quartz.events.LnZapPaymentRequestEvent
+import com.vitorpamplona.quartz.events.LnZapPaymentResponseEvent
+import com.vitorpamplona.quartz.events.LnZapRequestEvent
+import com.vitorpamplona.quartz.events.MetadataEvent
+import com.vitorpamplona.quartz.events.NIP24Factory
+import com.vitorpamplona.quartz.events.PeopleListEvent
+import com.vitorpamplona.quartz.events.PollNoteEvent
+import com.vitorpamplona.quartz.events.PrivateDmEvent
+import com.vitorpamplona.quartz.events.ReactionEvent
+import com.vitorpamplona.quartz.events.RelayAuthEvent
+import com.vitorpamplona.quartz.events.ReportEvent
+import com.vitorpamplona.quartz.events.RepostEvent
+import com.vitorpamplona.quartz.events.Response
+import com.vitorpamplona.quartz.events.SealedGossipEvent
+import com.vitorpamplona.quartz.events.StatusEvent
+import com.vitorpamplona.quartz.events.TextNoteEvent
+import com.vitorpamplona.quartz.events.WrappedEvent
+import com.vitorpamplona.quartz.events.ZapSplitSetup
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableSet
@@ -33,6 +73,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.math.BigDecimal
 import java.net.Proxy
 import java.util.Locale
@@ -90,7 +131,6 @@ class Account(
     var warnAboutPostsWithReports: Boolean = true,
     var filterSpamFromStrangers: Boolean = true,
     var lastReadPerRoute: Map<String, Long> = mapOf<String, Long>(),
-    var settings: Settings = Settings(),
     var loginWithExternalSigner: Boolean = false
 ) {
     var transientHiddenUsers: ImmutableSet<String> = persistentSetOf()
@@ -167,46 +207,6 @@ class Account(
     }
 
     var userProfileCache: User? = null
-
-    fun updateAutomaticallyStartPlayback(
-        automaticallyStartPlayback: ConnectivityType
-    ) {
-        settings.automaticallyStartPlayback = automaticallyStartPlayback
-        live.invalidateData()
-        saveable.invalidateData()
-    }
-
-    fun updateAutomaticallyShowUrlPreview(
-        automaticallyShowUrlPreview: ConnectivityType
-    ) {
-        settings.automaticallyShowUrlPreview = automaticallyShowUrlPreview
-        live.invalidateData()
-        saveable.invalidateData()
-    }
-
-    fun updateAutomaticallyShowProfilePicture(
-        automaticallyShowProfilePicture: ConnectivityType
-    ) {
-        settings.automaticallyShowProfilePictures = automaticallyShowProfilePicture
-        live.invalidateData()
-        saveable.invalidateData()
-    }
-
-    fun updateAutomaticallyHideHavBars(
-        automaticallyHideHavBars: BooleanType
-    ) {
-        settings.automaticallyHideNavigationBars = automaticallyHideHavBars
-        live.invalidateData()
-        saveable.invalidateData()
-    }
-
-    fun updateAutomaticallyShowImages(
-        automaticallyShowImages: ConnectivityType
-    ) {
-        settings.automaticallyShowImages = automaticallyShowImages
-        live.invalidateData()
-        saveable.invalidateData()
-    }
 
     fun updateOptOutOptions(warnReports: Boolean, filterSpam: Boolean) {
         warnAboutPostsWithReports = warnReports
@@ -366,7 +366,7 @@ class Account(
                                 )
                             }
 
-                            broadcastPrivately(giftWraps)
+                            broadcastPrivately(NIP24Factory.Result(senderReaction, giftWraps))
                         } else {
                             val giftWraps = NIP24Factory().createReactionWithinGroup(
                                 emojiUrl = emojiUrl,
@@ -419,7 +419,7 @@ class Account(
                             recipientPubKey = it
                         )
 
-                        broadcastPrivately(listOf(giftWraps))
+                        broadcastPrivately(NIP24Factory.Result(senderReaction, listOf(giftWraps)))
                     }
                 } else {
                     val giftWraps = NIP24Factory().createReactionWithinGroup(
@@ -1622,7 +1622,7 @@ class Account(
                         event = sealedEvent,
                         recipientPubKey = it
                     )
-                    broadcastPrivately(listOf(giftWraps))
+                    broadcastPrivately(NIP24Factory.Result(chatMessageEvent, listOf(giftWraps)))
                 }
             }
         } else {
@@ -1643,42 +1643,54 @@ class Account(
         }
     }
 
-    fun broadcastPrivately(signedEvents: List<GiftWrapEvent>) {
-        signedEvents.forEach {
-            Client.send(it)
+    fun broadcastPrivately(signedEvents: NIP24Factory.Result) {
+        val mine = signedEvents.wraps.filter {
+            (it.recipientPubKey() == keyPair.pubKey.toHexKey())
+        }
 
+        mine.forEach {
             // Only keep in cache the GiftWrap for the account.
-            if (it.recipientPubKey() == keyPair.pubKey.toHexKey()) {
-                if (loginWithExternalSigner) {
-                    ExternalSignerUtils.decrypt(it.content, it.pubKey, it.id, SignerType.NIP44_DECRYPT)
-                    val decryptedContent = ExternalSignerUtils.cachedDecryptedContent[it.id] ?: ""
-                    if (decryptedContent.isEmpty()) return
-                    it.cachedGift(keyPair.pubKey, decryptedContent)?.let { cached ->
-                        if (cached is SealedGossipEvent) {
-                            ExternalSignerUtils.decrypt(cached.content, cached.pubKey, cached.id, SignerType.NIP44_DECRYPT)
-                            val localDecryptedContent = ExternalSignerUtils.cachedDecryptedContent[cached.id] ?: ""
-                            if (localDecryptedContent.isEmpty()) return
-                            cached.cachedGossip(keyPair.pubKey, localDecryptedContent)?.let { gossip ->
-                                LocalCache.justConsume(gossip, null)
-                            }
-                        } else {
-                            LocalCache.justConsume(it, null)
+            if (loginWithExternalSigner) {
+                ExternalSignerUtils.decrypt(it.content, it.pubKey, it.id, SignerType.NIP44_DECRYPT)
+                val decryptedContent = ExternalSignerUtils.cachedDecryptedContent[it.id] ?: ""
+                if (decryptedContent.isEmpty()) return
+                it.cachedGift(keyPair.pubKey, decryptedContent)?.let { cached ->
+                    if (cached is SealedGossipEvent) {
+                        ExternalSignerUtils.decrypt(cached.content, cached.pubKey, cached.id, SignerType.NIP44_DECRYPT)
+                        val localDecryptedContent = ExternalSignerUtils.cachedDecryptedContent[cached.id] ?: ""
+                        if (localDecryptedContent.isEmpty()) return
+                        cached.cachedGossip(keyPair.pubKey, localDecryptedContent)?.let { gossip ->
+                            LocalCache.justConsume(gossip, null)
                         }
-                    }
-                } else {
-                    it.cachedGift(keyPair.privKey!!)?.let {
-                        if (it is SealedGossipEvent) {
-                            it.cachedGossip(keyPair.privKey!!)?.let {
-                                LocalCache.justConsume(it, null)
-                            }
-                        } else {
-                            LocalCache.justConsume(it, null)
-                        }
+                    } else {
+                        LocalCache.justConsume(it, null)
                     }
                 }
-
-                LocalCache.consume(it, null)
+            } else {
+                it.cachedGift(keyPair.privKey!!)?.let {
+                    if (it is SealedGossipEvent) {
+                        it.cachedGossip(keyPair.privKey!!)?.let {
+                            LocalCache.justConsume(it, null)
+                        }
+                    } else {
+                        LocalCache.justConsume(it, null)
+                    }
+                }
             }
+
+            LocalCache.consume(it, null)
+        }
+
+        val id = mine.firstOrNull()?.id
+        val mineNote = if (id == null) null else LocalCache.getNoteIfExists(id)
+
+        signedEvents.wraps.forEach {
+            // Creates an alias
+            if (mineNote != null && it.recipientPubKey() != keyPair.pubKey.toHexKey()) {
+                LocalCache.getOrAddAliasNote(it.id, mineNote)
+            }
+
+            Client.send(it)
         }
     }
 
@@ -3127,7 +3139,7 @@ class Account(
         return lastReadPerRoute[route] ?: 0
     }
 
-    fun registerObservers() {
+    suspend fun registerObservers() = withContext(Dispatchers.Main) {
         // Observes relays to restart connections
         userProfile().live().relays.observeForever {
             GlobalScope.launch(Dispatchers.IO) {

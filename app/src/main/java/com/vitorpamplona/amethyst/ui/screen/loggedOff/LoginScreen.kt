@@ -1,12 +1,20 @@
 package com.vitorpamplona.amethyst.ui.screen.loggedOff
 
 import android.app.Activity
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
@@ -16,8 +24,20 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -33,10 +53,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.*
-import androidx.compose.ui.text.input.*
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.vitorpamplona.amethyst.Amethyst
 import com.vitorpamplona.amethyst.R
@@ -52,7 +80,6 @@ import com.vitorpamplona.amethyst.ui.theme.Size35dp
 import com.vitorpamplona.amethyst.ui.theme.placeholderText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.util.*
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -64,6 +91,7 @@ fun LoginPage(
     var errorMessage by remember { mutableStateOf("") }
     val acceptedTerms = remember { mutableStateOf(!isFirstLogin) }
     var termsAcceptanceIsRequired by remember { mutableStateOf("") }
+
     val uri = LocalUriHandler.current
     val context = LocalContext.current
     var dialogOpen by remember {
@@ -74,6 +102,7 @@ fun LoginPage(
     var connectOrbotDialogOpen by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     var loginWithExternalSigner by remember { mutableStateOf(false) }
+
     val activity = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
         onResult = {
@@ -102,10 +131,7 @@ fun LoginPage(
                 }
 
                 if (acceptedTerms.value && key.value.text.isNotBlank()) {
-                    try {
-                        accountViewModel.startUI(key.value.text, useProxy.value, proxyPort.value.toInt(), true)
-                    } catch (e: Exception) {
-                        Log.e("Login", "Could not sign in", e)
+                    accountViewModel.login(key.value.text, useProxy.value, proxyPort.value.toInt(), true) {
                         errorMessage = context.getString(R.string.invalid_key)
                     }
                 }
@@ -226,10 +252,18 @@ fun LoginPage(
                 visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardActions = KeyboardActions(
                     onGo = {
-                        try {
-                            accountViewModel.startUI(key.value.text, useProxy.value, proxyPort.value.toInt())
-                        } catch (e: Exception) {
-                            errorMessage = context.getString(R.string.invalid_key)
+                        if (!acceptedTerms.value) {
+                            termsAcceptanceIsRequired = context.getString(R.string.acceptance_of_terms_is_required)
+                        }
+
+                        if (key.value.text.isBlank()) {
+                            errorMessage = context.getString(R.string.key_is_required)
+                        }
+
+                        if (acceptedTerms.value && key.value.text.isNotBlank()) {
+                            accountViewModel.login(key.value.text, useProxy.value, proxyPort.value.toInt()) {
+                                errorMessage = context.getString(R.string.invalid_key)
+                            }
                         }
                     }
                 )
@@ -340,10 +374,7 @@ fun LoginPage(
                         }
 
                         if (acceptedTerms.value && key.value.text.isNotBlank()) {
-                            try {
-                                accountViewModel.startUI(key.value.text, useProxy.value, proxyPort.value.toInt())
-                            } catch (e: Exception) {
-                                Log.e("Login", "Could not sign in", e)
+                            accountViewModel.login(key.value.text, useProxy.value, proxyPort.value.toInt()) {
                                 errorMessage = context.getString(R.string.invalid_key)
                             }
                         }
@@ -381,15 +412,12 @@ fun LoginPage(
                                 }
 
                                 if (acceptedTerms.value && key.value.text.isNotBlank()) {
-                                    try {
-                                        accountViewModel.startUI(
-                                            key.value.text,
-                                            useProxy.value,
-                                            proxyPort.value.toInt(),
-                                            true
-                                        )
-                                    } catch (e: Exception) {
-                                        Log.e("Login", "Could not sign in", e)
+                                    accountViewModel.login(
+                                        key.value.text,
+                                        useProxy.value,
+                                        proxyPort.value.toInt(),
+                                        true
+                                    ) {
                                         errorMessage = context.getString(R.string.invalid_key)
                                     }
                                 }

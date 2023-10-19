@@ -1,6 +1,7 @@
 package com.vitorpamplona.amethyst.ui.navigation
 
 import android.content.Context
+import android.os.Debug
 import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -54,10 +55,10 @@ import androidx.lifecycle.map
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavBackStackEntry
 import coil.Coil
+import com.fonfon.kgeohash.toGeoHash
 import com.vitorpamplona.amethyst.R
 import com.vitorpamplona.amethyst.model.Account
 import com.vitorpamplona.amethyst.model.AddressableNote
-import com.vitorpamplona.amethyst.model.ConnectivityType
 import com.vitorpamplona.amethyst.model.GLOBAL_FOLLOWS
 import com.vitorpamplona.amethyst.model.KIND3_FOLLOWS
 import com.vitorpamplona.amethyst.model.LocalCache
@@ -78,7 +79,6 @@ import com.vitorpamplona.amethyst.service.NostrThreadDataSource
 import com.vitorpamplona.amethyst.service.NostrUserProfileDataSource
 import com.vitorpamplona.amethyst.service.NostrVideoDataSource
 import com.vitorpamplona.amethyst.service.checkNotInMainThread
-import com.vitorpamplona.amethyst.service.connectivitystatus.ConnectivityStatus
 import com.vitorpamplona.amethyst.service.relays.Client
 import com.vitorpamplona.amethyst.service.relays.RelayPool
 import com.vitorpamplona.amethyst.ui.components.RobohashAsyncImageProxy
@@ -211,7 +211,6 @@ private fun HashTagTopBar(
         title = {
             Text(
                 remember(tag) { "#$tag" },
-                fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
             )
 
@@ -232,7 +231,7 @@ private fun CommunityTopBar(
         if (baseNote != null) {
             FlexibleTopBarWithBackButton(
                 title = {
-                    ShortCommunityHeader(baseNote, fontWeight = FontWeight.Medium, accountViewModel, nav)
+                    ShortCommunityHeader(baseNote, accountViewModel, nav)
                 },
                 extendableRow = {
                     Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -299,7 +298,7 @@ private fun RenderRoomTopBar(
 
                         Spacer(modifier = DoubleHorzSpacer)
 
-                        UsernameDisplay(baseUser, Modifier.weight(1f), fontWeight = FontWeight.Medium)
+                        UsernameDisplay(baseUser, Modifier.weight(1f), fontWeight = FontWeight.Normal)
                     }
                 }
             },
@@ -330,7 +329,7 @@ private fun RenderRoomTopBar(
                     Modifier
                         .padding(start = 10.dp)
                         .weight(1f),
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.Normal,
                     accountViewModel.userProfile()
                 )
             },
@@ -355,7 +354,6 @@ private fun ChannelTopBar(
                 ShortChannelHeader(
                     baseChannel = baseChannel,
                     accountViewModel = accountViewModel,
-                    fontWeight = FontWeight.Medium,
                     nav = nav,
                     showFlag = true
                 )
@@ -506,11 +504,7 @@ private fun LoggedInUserPictureDrawer(
     val pubkeyHex = remember { accountViewModel.userProfile().pubkeyHex }
 
     val automaticallyShowProfilePicture = remember {
-        when (accountViewModel.account.settings.automaticallyShowProfilePictures) {
-            ConnectivityType.WIFI_ONLY -> !ConnectivityStatus.isOnMobileData.value
-            ConnectivityType.NEVER -> false
-            ConnectivityType.ALWAYS -> true
-        }
+        accountViewModel.settings.showProfilePictures.value
     }
 
     IconButton(
@@ -751,12 +745,15 @@ fun SimpleTextSpinner(
 fun RenderOption(option: Name) {
     when (option) {
         is GeoHashName -> {
-            LoadCityName(option.geoHashTag) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(text = "/g/$it", color = MaterialTheme.colorScheme.onSurface)
+            val geohash = runCatching { option.geoHashTag.toGeoHash() }.getOrNull()
+            if (geohash != null) {
+                LoadCityName(geohash) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(text = "/g/$it", color = MaterialTheme.colorScheme.onSurface)
+                    }
                 }
             }
         }
@@ -830,10 +827,7 @@ fun FlexibleTopBarWithBackButton(
             title = title,
             extendableRow = extendableRow,
             navigationIcon = {
-                IconButton(
-                    onClick = popBack,
-                    modifier = Modifier
-                ) {
+                IconButton(onClick = popBack) {
                     ArrowBackIcon()
                 }
             },
@@ -883,6 +877,17 @@ fun debugState(context: Context) {
     NostrThreadDataSource.printCounter()
     NostrUserProfileDataSource.printCounter()
     NostrVideoDataSource.printCounter()
+
+    val totalMemoryKb = Runtime.getRuntime().totalMemory() / (1024 * 1024)
+    val freeMemoryKb = Runtime.getRuntime().freeMemory() / (1024 * 1024)
+
+    val jvmHeapAllocatedKb = totalMemoryKb - freeMemoryKb
+
+    Log.d("STATE DUMP", "Total Heap Allocated: " + jvmHeapAllocatedKb + " MB")
+
+    val nativeHeap = Debug.getNativeHeapAllocatedSize() / (1024 * 1024)
+
+    Log.d("STATE DUMP", "Total Native Heap Allocated: " + nativeHeap + " MB")
 
     Log.d("STATE DUMP", "Connected Relays: " + RelayPool.connectedRelays())
 

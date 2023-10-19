@@ -54,7 +54,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.CenterVertically
-import androidx.compose.ui.Alignment.Companion.TopStart
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -80,16 +79,15 @@ import androidx.lifecycle.map
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.request.SuccessResult
+import com.fonfon.kgeohash.GeoHash
 import com.fonfon.kgeohash.toGeoHash
 import com.vitorpamplona.amethyst.R
 import com.vitorpamplona.amethyst.model.AddressableNote
 import com.vitorpamplona.amethyst.model.Channel
-import com.vitorpamplona.amethyst.model.ConnectivityType
 import com.vitorpamplona.amethyst.model.Note
 import com.vitorpamplona.amethyst.model.RelayBriefInfo
 import com.vitorpamplona.amethyst.model.User
 import com.vitorpamplona.amethyst.service.ReverseGeoLocationUtil
-import com.vitorpamplona.amethyst.service.connectivitystatus.ConnectivityStatus
 import com.vitorpamplona.amethyst.ui.actions.NewRelayListView
 import com.vitorpamplona.amethyst.ui.components.ClickableUrl
 import com.vitorpamplona.amethyst.ui.components.CreateClickableTextWithEmoji
@@ -725,16 +723,12 @@ fun LongCommunityHeader(
 }
 
 @Composable
-fun ShortCommunityHeader(baseNote: AddressableNote, fontWeight: FontWeight = FontWeight.Bold, accountViewModel: AccountViewModel, nav: (String) -> Unit) {
+fun ShortCommunityHeader(baseNote: AddressableNote, accountViewModel: AccountViewModel, nav: (String) -> Unit) {
     val noteState by baseNote.live().metadata.observeAsState()
     val noteEvent = remember(noteState) { noteState?.note?.event as? CommunityDefinitionEvent } ?: return
 
     val automaticallyShowProfilePicture = remember {
-        when (accountViewModel.account.settings.automaticallyShowProfilePictures) {
-            ConnectivityType.WIFI_ONLY -> !ConnectivityStatus.isOnMobileData.value
-            ConnectivityType.NEVER -> false
-            ConnectivityType.ALWAYS -> true
-        }
+        accountViewModel.settings.showProfilePictures.value
     }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -759,7 +753,6 @@ fun ShortCommunityHeader(baseNote: AddressableNote, fontWeight: FontWeight = Fon
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = remember(noteState) { noteEvent.dTag() },
-                    fontWeight = fontWeight,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -2596,15 +2589,15 @@ fun LoadStatuses(
 }
 
 @Composable
-fun LoadCityName(geohash: String, content: @Composable (String) -> Unit) {
+fun LoadCityName(geohash: GeoHash, content: @Composable (String) -> Unit) {
     val context = LocalContext.current
     var cityName by remember(geohash) {
-        mutableStateOf<String>(geohash)
+        mutableStateOf<String>(geohash.toString())
     }
 
     LaunchedEffect(key1 = geohash) {
         launch(Dispatchers.IO) {
-            val newCityName = ReverseGeoLocationUtil().execute(geohash.toGeoHash().toLocation(), context)?.ifBlank { null }
+            val newCityName = ReverseGeoLocationUtil().execute(geohash.toLocation(), context)?.ifBlank { null }
             if (newCityName != null && newCityName != cityName) {
                 cityName = newCityName
             }
@@ -2615,20 +2608,23 @@ fun LoadCityName(geohash: String, content: @Composable (String) -> Unit) {
 }
 
 @Composable
-fun DisplayLocation(geohash: String, nav: (String) -> Unit) {
-    LoadCityName(geohash) { cityName ->
-        ClickableText(
-            text = AnnotatedString(cityName),
-            onClick = { nav("Geohash/$geohash") },
-            style = LocalTextStyle.current.copy(
-                color = MaterialTheme.colorScheme.primary.copy(
-                    alpha = 0.52f
+fun DisplayLocation(geohashStr: String, nav: (String) -> Unit) {
+    val geoHash = runCatching { geohashStr.toGeoHash() }.getOrNull()
+    if (geoHash != null) {
+        LoadCityName(geoHash) { cityName ->
+            ClickableText(
+                text = AnnotatedString(cityName),
+                onClick = { nav("Geohash/$geoHash") },
+                style = LocalTextStyle.current.copy(
+                    color = MaterialTheme.colorScheme.primary.copy(
+                        alpha = 0.52f
+                    ),
+                    fontSize = Font14SP,
+                    fontWeight = FontWeight.Bold
                 ),
-                fontSize = Font14SP,
-                fontWeight = FontWeight.Bold
-            ),
-            maxLines = 1
-        )
+                maxLines = 1
+            )
+        }
     }
 }
 
@@ -2788,11 +2784,7 @@ private fun RenderAuthorImages(
     val isChannel = baseNote.event is ChannelMessageEvent && baseNote.channelHex() != null
 
     val automaticallyShowProfilePicture = remember {
-        when (accountViewModel.account.settings.automaticallyShowProfilePictures) {
-            ConnectivityType.WIFI_ONLY -> !ConnectivityStatus.isOnMobileData.value
-            ConnectivityType.NEVER -> false
-            ConnectivityType.ALWAYS -> true
-        }
+        accountViewModel.settings.showProfilePictures.value
     }
 
     if (isChannel) {
@@ -3790,11 +3782,7 @@ private fun LongFormHeader(noteEvent: LongTextNoteEvent, note: Note, accountView
     ) {
         Column {
             val automaticallyShowUrlPreview = remember {
-                when (accountViewModel.account.settings.automaticallyShowUrlPreview) {
-                    ConnectivityType.WIFI_ONLY -> !ConnectivityStatus.isOnMobileData.value
-                    ConnectivityType.NEVER -> false
-                    ConnectivityType.ALWAYS -> true
-                }
+                accountViewModel.settings.showUrlPreview.value
             }
 
             if (automaticallyShowUrlPreview) {

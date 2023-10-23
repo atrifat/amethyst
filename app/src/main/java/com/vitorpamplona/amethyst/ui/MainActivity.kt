@@ -6,7 +6,6 @@ import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -17,13 +16,17 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.accompanist.adaptive.calculateDisplayFeatures
 import com.vitorpamplona.amethyst.LocalPreferences
 import com.vitorpamplona.amethyst.ServiceManager
 import com.vitorpamplona.amethyst.service.ExternalSignerUtils
+import com.vitorpamplona.amethyst.service.lang.LanguageTranslatorService
 import com.vitorpamplona.amethyst.service.notifications.PushNotificationUtils
 import com.vitorpamplona.amethyst.ui.components.DefaultMutedSetting
 import com.vitorpamplona.amethyst.ui.components.keepPlayingMutex
@@ -51,6 +54,7 @@ import java.nio.charset.StandardCharsets
 class MainActivity : AppCompatActivity() {
     private val isOnMobileDataState = mutableStateOf(false)
 
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     @RequiresApi(Build.VERSION_CODES.R)
     override fun onCreate(savedInstanceState: Bundle?) {
         ExternalSignerUtils.start(this)
@@ -60,9 +64,16 @@ class MainActivity : AppCompatActivity() {
         setContent {
             val sharedPreferencesViewModel: SharedPreferencesViewModel = viewModel()
 
-            LaunchedEffect(key1 = sharedPreferencesViewModel, isOnMobileDataState) {
+            val displayFeatures = calculateDisplayFeatures(this)
+            val windowSizeClass = calculateWindowSizeClass(this)
+
+            LaunchedEffect(key1 = sharedPreferencesViewModel) {
                 sharedPreferencesViewModel.init()
+            }
+
+            LaunchedEffect(isOnMobileDataState) {
                 sharedPreferencesViewModel.updateConnectivityStatusState(isOnMobileDataState)
+                sharedPreferencesViewModel.updateDisplaySettings(windowSizeClass, displayFeatures)
             }
 
             AmethystTheme(sharedPreferencesViewModel) {
@@ -91,8 +102,8 @@ class MainActivity : AppCompatActivity() {
         DefaultMutedSetting.value = true
 
         // Only starts after login
-        GlobalScope.launch(Dispatchers.IO) {
-            if (ServiceManager.shouldPauseService) {
+        if (ServiceManager.shouldPauseService) {
+            GlobalScope.launch(Dispatchers.IO) {
                 ServiceManager.start()
             }
         }
@@ -101,24 +112,23 @@ class MainActivity : AppCompatActivity() {
             PushNotificationUtils.init(LocalPreferences.allSavedAccounts())
         }
 
-        val networkRequest = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-            .build()
-
-        (getSystemService(ConnectivityManager::class.java) as ConnectivityManager)
-            .registerNetworkCallback(networkRequest, networkCallback)
+        (getSystemService(ConnectivityManager::class.java) as ConnectivityManager).registerDefaultNetworkCallback(networkCallback)
     }
 
     override fun onPause() {
+        LanguageTranslatorService.clear()
         ServiceManager.cleanObservers()
+
         // if (BuildConfig.DEBUG) {
-        debugState(this)
+        GlobalScope.launch(Dispatchers.IO) {
+            debugState(this@MainActivity)
+        }
         // }
 
         if (ServiceManager.shouldPauseService) {
-            ServiceManager.pause()
+            GlobalScope.launch(Dispatchers.IO) {
+                ServiceManager.pause()
+            }
         }
 
         (getSystemService(ConnectivityManager::class.java) as ConnectivityManager)
@@ -149,19 +159,6 @@ class MainActivity : AppCompatActivity() {
 
     @OptIn(DelicateCoroutinesApi::class)
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
-        // network is available for use
-        override fun onAvailable(network: Network) {
-            super.onAvailable(network)
-            Log.d("NETWORKCALLBACK", "onAvailable: Disconnecting and connecting again")
-            // Only starts after login
-            GlobalScope.launch(Dispatchers.IO) {
-                if (ServiceManager.shouldPauseService) {
-                    ServiceManager.pause()
-                    ServiceManager.start()
-                }
-            }
-        }
-
         // Network capabilities have changed for the network
         override fun onCapabilitiesChanged(
             network: Network,
@@ -171,20 +168,13 @@ class MainActivity : AppCompatActivity() {
 
             GlobalScope.launch(Dispatchers.IO) {
                 val isOnMobileData = networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
-                Log.d("NETWORKCALLBACK", "onCapabilitiesChanged: hasMobileData $isOnMobileData")
+                val isOnWifi = networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+                Log.d("ServiceManager NetworkCallback", "onCapabilitiesChanged: ${network.networkHandle} hasMobileData $isOnMobileData hasWifi $isOnWifi")
 
-                isOnMobileDataState.value = isOnMobileData
-            }
-        }
+                if (isOnMobileDataState.value != isOnMobileData) {
+                    isOnMobileDataState.value = isOnMobileData
 
-        // lost network connection
-        override fun onLost(network: Network) {
-            super.onLost(network)
-            Log.d("NETWORKCALLBACK", "onLost: Disconnecting and pausing relay's connection")
-            // Only starts after login
-            GlobalScope.launch(Dispatchers.IO) {
-                if (ServiceManager.shouldPauseService) {
-                    ServiceManager.pause()
+                    ServiceManager.forceRestartIfItShould()
                 }
             }
         }

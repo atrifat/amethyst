@@ -5,14 +5,16 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.os.Build
 import android.util.Log
+import android.view.View
 import android.view.Window
+import android.view.WindowManager
+import android.widget.FrameLayout
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -49,6 +51,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +60,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -604,7 +608,6 @@ private fun DisplayBlurHash(
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ZoomableImageDialog(
     imageUrl: ZoomableContent,
@@ -612,32 +615,51 @@ fun ZoomableImageDialog(
     onDismiss: () -> Unit,
     accountViewModel: AccountViewModel
 ) {
-    val view = LocalView.current
-
-    DisposableEffect(key1 = view) {
-        if (Build.VERSION.SDK_INT >= 30) {
-            view.windowInsetsController?.hide(
-                android.view.WindowInsets.Type.systemBars()
-            )
-        }
-
-        onDispose {
-            if (Build.VERSION.SDK_INT >= 30) {
-                view.windowInsetsController?.show(
-                    android.view.WindowInsets.Type.systemBars()
-                )
-            }
-        }
-    }
+    val orientation = LocalConfiguration.current.orientation
+    println("This Log only exists to force orientation listener $orientation")
 
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
-            usePlatformDefaultWidth = false,
+            usePlatformDefaultWidth = true,
             decorFitsSystemWindows = false
         )
     ) {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        val view = LocalView.current
+        val orientation = LocalConfiguration.current.orientation
+        println("This Log only exists to force orientation listener $orientation")
+
+        val activityWindow = getActivityWindow()
+        val dialogWindow = getDialogWindow()
+        val parentView = LocalView.current.parent as View
+        SideEffect {
+            if (activityWindow != null && dialogWindow != null) {
+                val attributes = WindowManager.LayoutParams()
+                attributes.copyFrom(activityWindow.attributes)
+                attributes.type = dialogWindow.attributes.type
+                dialogWindow.attributes = attributes
+                parentView.layoutParams = FrameLayout.LayoutParams(activityWindow.decorView.width, activityWindow.decorView.height)
+                view.layoutParams = FrameLayout.LayoutParams(activityWindow.decorView.width, activityWindow.decorView.height)
+            }
+        }
+
+        DisposableEffect(key1 = Unit) {
+            if (Build.VERSION.SDK_INT >= 30) {
+                view.windowInsetsController?.hide(
+                    android.view.WindowInsets.Type.systemBars()
+                )
+            }
+
+            onDispose {
+                if (Build.VERSION.SDK_INT >= 30) {
+                    view.windowInsetsController?.show(
+                        android.view.WindowInsets.Type.systemBars()
+                    )
+                }
+            }
+        }
+
+        Surface(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
                 DialogContent(allImages, imageUrl, onDismiss, accountViewModel)
             }
@@ -812,15 +834,14 @@ private fun RenderImageOrVideo(
     if (content is ZoomableUrlImage) {
         val mainModifier = Modifier
             .fillMaxSize()
-            .zoomable(rememberZoomState())
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null // Avoid flashing on click
-            ) {
-                if (onToggleControllerVisibility != null) {
-                    onToggleControllerVisibility()
+            .zoomable(
+                rememberZoomState(),
+                onTap = {
+                    if (onToggleControllerVisibility != null) {
+                        onToggleControllerVisibility()
+                    }
                 }
-            }
+            )
 
         UrlImageView(
             content = content,
@@ -846,15 +867,14 @@ private fun RenderImageOrVideo(
     } else if (content is ZoomableLocalImage) {
         val mainModifier = Modifier
             .fillMaxSize()
-            .zoomable(rememberZoomState())
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null // Avoid flashing on click
-            ) {
-                if (onToggleControllerVisibility != null) {
-                    onToggleControllerVisibility()
+            .zoomable(
+                rememberZoomState(),
+                onTap = {
+                    if (onToggleControllerVisibility != null) {
+                        onToggleControllerVisibility()
+                    }
                 }
-            }
+            )
 
         LocalImageView(
             content = content,
@@ -949,5 +969,15 @@ private tailrec fun Context.getActivityWindow(): Window? =
     when (this) {
         is Activity -> window
         is ContextWrapper -> baseContext.getActivityWindow()
+        else -> null
+    }
+
+@Composable
+fun getActivity(): Activity? = LocalView.current.context.getActivity()
+
+private tailrec fun Context.getActivity(): Activity? =
+    when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.getActivity()
         else -> null
     }

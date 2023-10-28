@@ -1,5 +1,6 @@
 package com.vitorpamplona.amethyst.ui.screen.loggedIn
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,7 +28,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +46,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.amethyst.R
 import com.vitorpamplona.amethyst.model.Account
@@ -86,7 +87,7 @@ fun SearchScreen(
     nav: (String) -> Unit
 ) {
     val searchBarViewModel: SearchBarViewModel = viewModel(
-        key = accountViewModel.account.userProfile().pubkeyHex + "SearchBarViewModel",
+        key = "SearchBarViewModel",
         factory = SearchBarViewModel.Factory(
             accountViewModel.account
         )
@@ -198,6 +199,7 @@ class SearchBarViewModel(val account: Account) : ViewModel() {
 
     override fun onCleared() {
         bundler.cancel()
+        Log.d("Init", "OnCleared: ${this.javaClass.simpleName}")
         super.onCleared()
     }
 
@@ -336,10 +338,10 @@ private fun DisplaySearchResults(
         return
     }
 
-    val hashTags by searchBarViewModel.hashtagResults.collectAsState()
-    val users by searchBarViewModel.searchResultsUsers.collectAsState()
-    val channels by searchBarViewModel.searchResultsChannels.collectAsState()
-    val notes by searchBarViewModel.searchResultsNotes.collectAsState()
+    val hashTags by searchBarViewModel.hashtagResults.collectAsStateWithLifecycle()
+    val users by searchBarViewModel.searchResultsUsers.collectAsStateWithLifecycle()
+    val channels by searchBarViewModel.searchResultsChannels.collectAsStateWithLifecycle()
+    val notes by searchBarViewModel.searchResultsNotes.collectAsStateWithLifecycle()
 
     val hasNewMessages = remember {
         mutableStateOf(false)

@@ -30,6 +30,8 @@ class SettingsState() {
     var automaticallyShowUrlPreview by mutableStateOf(ConnectivityType.ALWAYS)
     var automaticallyHideNavigationBars by mutableStateOf(BooleanType.ALWAYS)
     var automaticallyShowProfilePictures by mutableStateOf(ConnectivityType.ALWAYS)
+    var dontShowPushNotificationSelector by mutableStateOf<Boolean>(false)
+    var dontAskForNotificationPermissions by mutableStateOf<Boolean>(false)
 
     var isOnMobileData: State<Boolean> = mutableStateOf(false)
 
@@ -86,6 +88,8 @@ class SharedPreferencesViewModel : ViewModel() {
             sharedPrefs.automaticallyShowUrlPreview = savedSettings.automaticallyShowUrlPreview
             sharedPrefs.automaticallyHideNavigationBars = savedSettings.automaticallyHideNavigationBars
             sharedPrefs.automaticallyShowProfilePictures = savedSettings.automaticallyShowProfilePictures
+            sharedPrefs.dontShowPushNotificationSelector = savedSettings.dontShowPushNotificationSelector
+            sharedPrefs.dontAskForNotificationPermissions = savedSettings.dontAskForNotificationPermissions
 
             updateLanguageInTheUI()
         }
@@ -109,9 +113,11 @@ class SharedPreferencesViewModel : ViewModel() {
 
     fun updateLanguageInTheUI() {
         if (sharedPrefs.language != null) {
-            AppCompatDelegate.setApplicationLocales(
-                LocaleListCompat.forLanguageTags(sharedPrefs.language)
-            )
+            viewModelScope.launch(Dispatchers.Main) {
+                AppCompatDelegate.setApplicationLocales(
+                    LocaleListCompat.forLanguageTags(sharedPrefs.language)
+                )
+            }
         }
     }
 
@@ -150,6 +156,20 @@ class SharedPreferencesViewModel : ViewModel() {
         }
     }
 
+    fun dontShowPushNotificationSelector() {
+        if (sharedPrefs.dontShowPushNotificationSelector == false) {
+            sharedPrefs.dontShowPushNotificationSelector = true
+            saveSharedSettings()
+        }
+    }
+
+    fun dontAskForNotificationPermissions() {
+        if (sharedPrefs.dontAskForNotificationPermissions == false) {
+            sharedPrefs.dontAskForNotificationPermissions = true
+            saveSharedSettings()
+        }
+    }
+
     fun updateConnectivityStatusState(isOnMobileDataState: State<Boolean>) {
         if (sharedPrefs.isOnMobileData != isOnMobileDataState) {
             sharedPrefs.isOnMobileData = isOnMobileDataState
@@ -175,7 +195,9 @@ class SharedPreferencesViewModel : ViewModel() {
                     sharedPrefs.automaticallyStartPlayback,
                     sharedPrefs.automaticallyShowUrlPreview,
                     sharedPrefs.automaticallyHideNavigationBars,
-                    sharedPrefs.automaticallyShowProfilePictures
+                    sharedPrefs.automaticallyShowProfilePictures,
+                    sharedPrefs.dontShowPushNotificationSelector,
+                    sharedPrefs.dontAskForNotificationPermissions
                 )
             )
         }

@@ -37,7 +37,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -60,7 +59,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.map
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.vitorpamplona.amethyst.BuildConfig
 import com.vitorpamplona.amethyst.LocalPreferences
@@ -178,7 +177,8 @@ fun ProfileContent(
                 painter = painterResource(R.drawable.profile_banner),
                 contentDescription = stringResource(R.string.profile_banner),
                 contentScale = ContentScale.FillWidth,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                     .height(120.dp)
             )
         }
@@ -222,8 +222,8 @@ fun ProfileContent(
                 )
             }
 
-            Row(Modifier.padding(top = Size10dp)) {
-                EditStatusBox(baseAccountUser, accountViewModel)
+            Column(Modifier.padding(top = Size10dp)) {
+                EditStatusBoxes(baseAccountUser, accountViewModel)
             }
 
             Row(
@@ -243,7 +243,7 @@ fun ProfileContent(
 }
 
 @Composable
-private fun EditStatusBox(baseAccountUser: User, accountViewModel: AccountViewModel) {
+private fun EditStatusBoxes(baseAccountUser: User, accountViewModel: AccountViewModel) {
     val focusManager = LocalFocusManager.current
 
     LoadStatuses(user = baseAccountUser, accountViewModel) { statuses ->
@@ -290,9 +290,7 @@ private fun EditStatusBox(baseAccountUser: User, accountViewModel: AccountViewMo
             )
         } else {
             statuses.forEach {
-                val originalStatus by it.live().metadata.map {
-                    it.note.event?.content() ?: ""
-                }.observeAsState(it.event?.content() ?: "")
+                val originalStatus by it.live().content.observeAsState("")
 
                 val thisStatus = remember {
                     mutableStateOf(originalStatus)
@@ -634,7 +632,7 @@ private suspend fun enableTor(
 
 @Composable
 private fun RelayStatus(accountViewModel: AccountViewModel) {
-    val connectedRelaysText by RelayPool.statusFlow.collectAsState(initial = RelayPoolStatus(0, 0))
+    val connectedRelaysText by RelayPool.statusFlow.collectAsStateWithLifecycle(RelayPoolStatus(0, 0))
 
     RenderRelayStatus(connectedRelaysText)
 }

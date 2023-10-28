@@ -160,6 +160,7 @@ fun AppNavigation(
                 NotificationScreen(
                     notifFeedViewModel = notifFeedViewModel,
                     userReactionsStatsModel = userReactionsStatsModel,
+                    sharedPreferencesViewModel = sharedPreferencesViewModel,
                     accountViewModel = accountViewModel,
                     nav = nav
                 )

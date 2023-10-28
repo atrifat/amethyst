@@ -28,7 +28,10 @@ class RegisterAccounts(
                 if (acc.loginWithExternalSigner) {
                     ExternalSignerUtils.account = acc
                 }
-                val relayToUse = acc.activeRelays()?.firstOrNull { it.read }
+
+                val readRelays = acc.userProfile().latestContactList?.relays() ?: acc.backupContactList?.relays()
+
+                val relayToUse = readRelays?.firstNotNullOfOrNull { if (it.value.read) it.key else null }
                 if (relayToUse != null) {
                     acc.createAuthEvent(relayToUse, notificationToken)
                 } else {
@@ -62,7 +65,12 @@ class RegisterAccounts(
                 it.isSuccessful
             }
         } catch (e: java.lang.Exception) {
-            Log.e("FirebaseMsgService", "Unable to register with push server", e)
+            val tag = if (BuildConfig.FLAVOR == "play") {
+                "FirebaseMsgService"
+            } else {
+                "UnifiedPushService"
+            }
+            Log.e(tag, "Unable to register with push server", e)
         }
     }
 

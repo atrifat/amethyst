@@ -27,7 +27,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +47,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -141,58 +141,58 @@ fun MainScreen(
     }
 
     val followLists: FollowListViewModel = viewModel(
-        key = accountViewModel.userProfile().pubkeyHex + "FollowListViewModel",
+        key = "FollowListViewModel",
         factory = FollowListViewModel.Factory(accountViewModel.account)
     )
 
     // Avoids creating ViewModels for performance reasons (up to 1 second delays)
     val homeFeedViewModel: NostrHomeFeedViewModel = viewModel(
-        key = accountViewModel.userProfile().pubkeyHex + "NostrHomeFeedViewModel",
+        key = "NostrHomeFeedViewModel",
         factory = NostrHomeFeedViewModel.Factory(accountViewModel.account)
     )
 
     val repliesFeedViewModel: NostrHomeRepliesFeedViewModel = viewModel(
-        key = accountViewModel.userProfile().pubkeyHex + "NostrHomeRepliesFeedViewModel",
+        key = "NostrHomeRepliesFeedViewModel",
         factory = NostrHomeRepliesFeedViewModel.Factory(accountViewModel.account)
     )
 
     val videoFeedViewModel: NostrVideoFeedViewModel = viewModel(
-        key = accountViewModel.userProfile().pubkeyHex + "NostrVideoFeedViewModel",
+        key = "NostrVideoFeedViewModel",
         factory = NostrVideoFeedViewModel.Factory(accountViewModel.account)
     )
 
     val discoveryLiveFeedViewModel: NostrDiscoverLiveFeedViewModel = viewModel(
-        key = accountViewModel.userProfile().pubkeyHex + "NostrDiscoveryLiveFeedViewModel",
+        key = "NostrDiscoveryLiveFeedViewModel",
         factory = NostrDiscoverLiveFeedViewModel.Factory(accountViewModel.account)
     )
 
     val discoveryCommunityFeedViewModel: NostrDiscoverCommunityFeedViewModel = viewModel(
-        key = accountViewModel.userProfile().pubkeyHex + "NostrDiscoveryCommunityFeedViewModel",
+        key = "NostrDiscoveryCommunityFeedViewModel",
         factory = NostrDiscoverCommunityFeedViewModel.Factory(accountViewModel.account)
     )
 
     val discoveryChatFeedViewModel: NostrDiscoverChatFeedViewModel = viewModel(
-        key = accountViewModel.userProfile().pubkeyHex + "NostrDiscoveryChatFeedViewModel",
+        key = "NostrDiscoveryChatFeedViewModel",
         factory = NostrDiscoverChatFeedViewModel.Factory(accountViewModel.account)
     )
 
     val notifFeedViewModel: NotificationViewModel = viewModel(
-        key = accountViewModel.userProfile().pubkeyHex + "NotificationViewModel",
+        key = "NotificationViewModel",
         factory = NotificationViewModel.Factory(accountViewModel.account)
     )
 
     val userReactionsStatsModel: UserReactionsViewModel = viewModel(
-        key = accountViewModel.userProfile().pubkeyHex + "UserReactionsViewModel",
+        key = "UserReactionsViewModel",
         factory = UserReactionsViewModel.Factory(accountViewModel.account)
     )
 
     val knownFeedViewModel: NostrChatroomListKnownFeedViewModel = viewModel(
-        key = accountViewModel.userProfile().pubkeyHex + "NostrChatroomListKnownFeedViewModel",
+        key = "NostrChatroomListKnownFeedViewModel",
         factory = NostrChatroomListKnownFeedViewModel.Factory(accountViewModel.account)
     )
 
     val newFeedViewModel: NostrChatroomListNewFeedViewModel = viewModel(
-        key = accountViewModel.userProfile().pubkeyHex + "NostrChatroomListNewFeedViewModel",
+        key = "NostrChatroomListNewFeedViewModel",
         factory = NostrChatroomListNewFeedViewModel.Factory(accountViewModel.account)
     )
 
@@ -389,7 +389,7 @@ fun MainScreen(
 @Composable
 private fun DisplayErrorMessages(accountViewModel: AccountViewModel) {
     val context = LocalContext.current
-    val openDialogMsg = accountViewModel.toasts.collectAsState(initial = null)
+    val openDialogMsg = accountViewModel.toasts.collectAsStateWithLifecycle(null)
 
     openDialogMsg.value?.let { obj ->
         when (obj) {
@@ -439,7 +439,7 @@ fun FloatingButtons(
     nav: (String) -> Unit,
     navScrollToTop: (Route, Boolean) -> Unit
 ) {
-    val accountState by accountStateViewModel.accountContent.collectAsState()
+    val accountState by accountStateViewModel.accountContent.collectAsStateWithLifecycle()
 
     when (accountState) {
         is AccountState.Loading -> {

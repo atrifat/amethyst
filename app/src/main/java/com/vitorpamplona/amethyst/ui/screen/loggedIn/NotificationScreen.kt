@@ -14,7 +14,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -28,16 +27,15 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.patrykandpatrick.vico.compose.axis.axisLabelComponent
-import com.patrykandpatrick.vico.compose.axis.horizontal.bottomAxis
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
-import com.patrykandpatrick.vico.compose.axis.vertical.endAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberEndAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
-import com.patrykandpatrick.vico.compose.axis.vertical.startAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
 import com.patrykandpatrick.vico.compose.chart.line.lineChart
 import com.patrykandpatrick.vico.compose.component.shape.shader.fromBrush
@@ -50,6 +48,7 @@ import com.patrykandpatrick.vico.core.chart.line.LineChart
 import com.patrykandpatrick.vico.core.chart.values.ChartValues
 import com.patrykandpatrick.vico.core.component.shape.shader.DynamicShaders
 import com.vitorpamplona.amethyst.service.NostrAccountDataSource
+import com.vitorpamplona.amethyst.ui.components.SelectNotificationProvider
 import com.vitorpamplona.amethyst.ui.navigation.Route
 import com.vitorpamplona.amethyst.ui.note.OneGiga
 import com.vitorpamplona.amethyst.ui.note.OneKilo
@@ -60,6 +59,7 @@ import com.vitorpamplona.amethyst.ui.note.showCount
 import com.vitorpamplona.amethyst.ui.screen.NotificationViewModel
 import com.vitorpamplona.amethyst.ui.screen.RefresheableCardView
 import com.vitorpamplona.amethyst.ui.screen.ScrollStateKeys
+import com.vitorpamplona.amethyst.ui.screen.SharedPreferencesViewModel
 import com.vitorpamplona.amethyst.ui.theme.BitcoinOrange
 import com.vitorpamplona.amethyst.ui.theme.RoyalBlue
 import com.vitorpamplona.amethyst.ui.theme.chartStyle
@@ -72,12 +72,13 @@ import kotlin.math.roundToInt
 fun NotificationScreen(
     notifFeedViewModel: NotificationViewModel,
     userReactionsStatsModel: UserReactionsViewModel,
+    sharedPreferencesViewModel: SharedPreferencesViewModel,
     accountViewModel: AccountViewModel,
     nav: (String) -> Unit
 ) {
-    WatchAccountForNotifications(notifFeedViewModel, accountViewModel)
+    SelectNotificationProvider(sharedPreferencesViewModel)
 
-    CheckifItNeedsToRequestNotificationPermission()
+    WatchAccountForNotifications(notifFeedViewModel, accountViewModel)
 
     val lifeCycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifeCycleOwner) {
@@ -112,26 +113,29 @@ fun NotificationScreen(
     }
 }
 
-// TODO: Turn this into an Account flag
-var hasAlreadyAskedNotificationPermissions = false
-
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun CheckifItNeedsToRequestNotificationPermission() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasAlreadyAskedNotificationPermissions) {
-        val notificationPermissionState = rememberPermissionState(
-            Manifest.permission.POST_NOTIFICATIONS
-        )
+fun CheckifItNeedsToRequestNotificationPermission(
+    sharedPreferencesViewModel: SharedPreferencesViewModel
+): PermissionState {
+    val notificationPermissionState = rememberPermissionState(
+        Manifest.permission.POST_NOTIFICATIONS
+    )
 
-        if (!notificationPermissionState.status.isGranted) {
-            hasAlreadyAskedNotificationPermissions = true
+    if (!sharedPreferencesViewModel.sharedPrefs.dontAskForNotificationPermissions) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (!notificationPermissionState.status.isGranted) {
+                sharedPreferencesViewModel.dontAskForNotificationPermissions()
 
-            // This will pause the APP, including the connection with relays.
-            LaunchedEffect(notificationPermissionState) {
-                notificationPermissionState.launchPermissionRequest()
+                // This will pause the APP, including the connection with relays.
+                LaunchedEffect(notificationPermissionState) {
+                    notificationPermissionState.launchPermissionRequest()
+                }
             }
         }
     }
+
+    return notificationPermissionState
 }
 
 @Composable
@@ -218,8 +222,8 @@ private fun ObserveAndShowChart(
     lineChartCount: LineChart,
     lineChartZaps: LineChart
 ) {
-    val axisModel = model.axisLabels.collectAsState()
-    val chartModel by model.chartModel.collectAsState()
+    val axisModel = model.axisLabels.collectAsStateWithLifecycle()
+    val chartModel by model.chartModel.collectAsStateWithLifecycle()
     chartModel?.let {
         Chart(
             chart = remember(lineChartCount, lineChartZaps) {

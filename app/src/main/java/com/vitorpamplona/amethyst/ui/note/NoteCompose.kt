@@ -306,7 +306,7 @@ fun CheckHiddenNoteCompose(
             accountViewModel.account.liveHiddenUsers.map {
                 note.isHiddenFor(it)
             }.distinctUntilChanged()
-        }.observeAsState(false)
+        }.observeAsState(accountViewModel.isNoteHidden(note))
 
         Crossfade(targetState = isHidden) {
             if (!it) {
@@ -608,9 +608,9 @@ fun LongCommunityHeader(
 
             if (!subject.isNullOrBlank() && body?.split("\n")?.get(0)?.contains(subject) == false) {
                 if (rules == null) {
-                    "## $subject\n$body"
+                    "### $subject\n$body"
                 } else {
-                    "## $subject\n$body\n\n## $rulesLabel\n\n$rules"
+                    "### $subject\n$body\n\n### $rulesLabel\n\n$rules"
                 }
             } else {
                 if (rules == null) {
@@ -1327,7 +1327,7 @@ fun RenderTextEvent(
         val body = accountViewModel.decrypt(note)
 
         if (!subject.isNullOrBlank() && body?.split("\n")?.get(0)?.contains(subject) == false) {
-            "## $subject\n$body"
+            "### $subject\n$body"
         } else {
             body
         }
@@ -2919,6 +2919,7 @@ fun DisplayHighlight(
     DisplayQuoteAuthor(authorHex ?: "", url, postAddress, accountViewModel, nav)
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DisplayQuoteAuthor(
     authorHex: String,
@@ -2938,7 +2939,7 @@ private fun DisplayQuoteAuthor(
     }
 
     MeasureSpaceWidth {
-        Row(horizontalArrangement = Arrangement.spacedBy(it), verticalAlignment = Alignment.CenterVertically) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(it), verticalArrangement = Arrangement.Center) {
             userBase?.let { userBase ->
                 LoadAndDisplayUser(userBase, nav)
             }
@@ -3566,7 +3567,7 @@ fun AudioHeader(noteEvent: AudioHeaderEvent, note: Note, accountViewModel: Accou
         val body = accountViewModel.decrypt(note)
 
         if (!subject.isNullOrBlank() && body?.split("\n")?.get(0)?.contains(subject) == false) {
-            "## $subject\n$body"
+            "### $subject\n$body"
         } else {
             body
         }

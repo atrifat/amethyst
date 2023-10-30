@@ -106,9 +106,11 @@ import com.vitorpamplona.amethyst.ui.theme.mediumImportanceLink
 import com.vitorpamplona.amethyst.ui.theme.placeholderText
 import com.vitorpamplona.amethyst.ui.theme.placeholderTextColorFilter
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
+import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
@@ -156,11 +158,14 @@ private fun InnerReactionRow(
                 verticalArrangement = Arrangement.Center,
                 modifier = ReactionRowExpandButton
             ) {
-                Row(verticalAlignment = CenterVertically) {
-                    WatchReactionsZapsBoostsAndDisplayIfExists(baseNote) {
-                        RenderShowIndividualReactionsButton(wantsToSeeReactions)
+                val (value, elapsed) = measureTimedValue {
+                    Row(verticalAlignment = CenterVertically) {
+                        WatchReactionsZapsBoostsAndDisplayIfExists(baseNote) {
+                            RenderShowIndividualReactionsButton(wantsToSeeReactions)
+                        }
                     }
                 }
+                Log.d("Rendering Metrics", "Reactions Button: ${baseNote.event?.content()?.split("\n")?.getOrNull(0)?.take(15)}.. $elapsed")
             }
         }
 
@@ -324,10 +329,8 @@ private fun WatchReactionsZapsBoostsAndDisplayIfExists(baseNote: Note, content: 
             baseNote.reactions.isNotEmpty()
     )
 
-    Crossfade(targetState = hasReactions) {
-        if (it) {
-            content()
-        }
+    if (hasReactions) {
+        content()
     }
 }
 
@@ -644,25 +647,8 @@ fun BoostReaction(
     IconButton(
         modifier = iconButtonModifier,
         onClick = {
-            if (accountViewModel.isWriteable()) {
-                if (accountViewModel.hasBoosted(baseNote)) {
-                    accountViewModel.deleteBoostsTo(baseNote)
-                } else {
-                    wantsToBoost = true
-                }
-            } else {
-                if (accountViewModel.loggedInWithExternalSigner()) {
-                    if (accountViewModel.hasBoosted(baseNote)) {
-                        accountViewModel.deleteBoostsTo(baseNote)
-                    } else {
-                        wantsToBoost = true
-                    }
-                } else {
-                    accountViewModel.toast(
-                        R.string.read_only_user,
-                        R.string.login_with_a_private_key_to_be_able_to_boost_posts
-                    )
-                }
+            accountViewModel.tryBoost(baseNote) {
+                wantsToBoost = true
             }
         }
     ) {
@@ -696,7 +682,9 @@ fun BoostIcon(baseNote: Note, iconSize: Dp = Size20dp, grayTint: Color, accountV
         baseNote.live().boosts.map {
             if (it.note.isBoostedBy(accountViewModel.userProfile())) Color.Unspecified else grayTint
         }.distinctUntilChanged()
-    }.observeAsState(grayTint)
+    }.observeAsState(
+        if (baseNote.isBoostedBy(accountViewModel.userProfile())) Color.Unspecified else grayTint
+    )
 
     val iconModifier = remember {
         Modifier.size(iconSize)
@@ -1276,7 +1264,7 @@ fun ReactionChoicePopup(
     val account = accountState?.account ?: return
 
     val toRemove = remember {
-        baseNote.reactedBy(account.userProfile()).toSet()
+        baseNote.reactedBy(account.userProfile()).toImmutableSet()
     }
 
     val iconSizePx = with(LocalDensity.current) {
@@ -1311,7 +1299,7 @@ private fun ActionableReactionButton(
     accountViewModel: AccountViewModel,
     onDismiss: () -> Unit,
     onChangeAmount: () -> Unit,
-    toRemove: Set<String>
+    toRemove: ImmutableSet<String>
 ) {
     Button(
         modifier = Modifier.padding(horizontal = 3.dp),

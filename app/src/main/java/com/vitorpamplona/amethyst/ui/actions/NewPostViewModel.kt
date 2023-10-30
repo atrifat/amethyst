@@ -151,7 +151,7 @@ open class NewPostViewModel() : ViewModel() {
         }
 
         quote?.let {
-            message = TextFieldValue(message.text + "\n\nnostr:${it.toNEvent()}")
+            message = TextFieldValue(message.text + "\nnostr:${it.toNEvent()}")
             urlPreview = findUrlInMessage()
         }
 
@@ -283,6 +283,8 @@ open class NewPostViewModel() : ViewModel() {
                     (originalNote?.event as? TextNoteEvent)?.root() // if it has a marker as root
                         ?: originalNote?.replyTo?.firstOrNull { it.event != null && it.replyTo?.isEmpty() == true }?.idHex // if it has loaded events with zero replies in the reply list
                         ?: originalNote?.replyTo?.firstOrNull()?.idHex // old rules, first item is root.
+                        ?: originalNote?.idHex
+
                 val replyId = originalNote?.idHex
 
                 account?.sendPost(
@@ -335,7 +337,7 @@ open class NewPostViewModel() : ViewModel() {
                                         createNIP94Record(imageUrl, mimeType, alt, sensitiveContent)
                                     } else {
                                         isUploadingImage = false
-                                        message = TextFieldValue(message.text + "\n\n" + imageUrl)
+                                        message = TextFieldValue(message.text + "\n" + imageUrl)
                                         urlPreview = findUrlInMessage()
                                     }
                                 },
@@ -559,9 +561,9 @@ open class NewPostViewModel() : ViewModel() {
                     isUploadingImage = false
 
                     if (note == null) {
-                        message = TextFieldValue(message.text + "\n\n" + imageUrl)
+                        message = TextFieldValue(message.text + "\n" + imageUrl)
                     } else {
-                        message = TextFieldValue(message.text + "\n\nnostr:" + note.toNEvent())
+                        message = TextFieldValue(message.text + "\nnostr:" + note.toNEvent())
                     }
 
                     urlPreview = findUrlInMessage()
@@ -591,7 +593,7 @@ open class NewPostViewModel() : ViewModel() {
                     isUploadingImage = false
 
                     note?.let {
-                        message = TextFieldValue(message.text + "\n\nnostr:" + it.toNEvent())
+                        message = TextFieldValue(message.text + "\nnostr:" + it.toNEvent())
                     }
 
                     urlPreview = findUrlInMessage()

@@ -104,7 +104,7 @@ class MainActivity : AppCompatActivity() {
         // Only starts after login
         if (ServiceManager.shouldPauseService) {
             GlobalScope.launch(Dispatchers.IO) {
-                ServiceManager.start()
+                ServiceManager.justStart()
             }
         }
 
@@ -127,7 +127,7 @@ class MainActivity : AppCompatActivity() {
 
         if (ServiceManager.shouldPauseService) {
             GlobalScope.launch(Dispatchers.IO) {
-                ServiceManager.pause()
+                ServiceManager.pauseForGood()
             }
         }
 
@@ -159,6 +159,14 @@ class MainActivity : AppCompatActivity() {
 
     @OptIn(DelicateCoroutinesApi::class)
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            super.onAvailable(network)
+
+            GlobalScope.launch(Dispatchers.IO) {
+                ServiceManager.forceRestartIfItShould()
+            }
+        }
+
         // Network capabilities have changed for the network
         override fun onCapabilitiesChanged(
             network: Network,

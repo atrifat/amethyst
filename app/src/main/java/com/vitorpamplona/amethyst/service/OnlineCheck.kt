@@ -13,6 +13,14 @@ object OnlineChecker {
     val checkOnlineCache = LruCache<String, OnlineCheckResult>(100)
     val fiveMinutes = 1000 * 60 * 5
 
+    fun isOnlineCached(url: String?): Boolean {
+        if (url.isNullOrBlank()) return false
+        if ((checkOnlineCache.get(url)?.timeInMs ?: 0) > System.currentTimeMillis() - fiveMinutes) {
+            return checkOnlineCache.get(url).online
+        }
+        return false
+    }
+
     fun isOnline(url: String?): Boolean {
         checkNotInMainThread()
 
@@ -29,6 +37,7 @@ object OnlineChecker {
                 .build()
 
             val result = HttpClient.getHttpClient().newCall(request).execute().use {
+                checkNotInMainThread()
                 it.isSuccessful
             }
             checkOnlineCache.put(url, OnlineCheckResult(System.currentTimeMillis(), result))

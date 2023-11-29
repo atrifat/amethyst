@@ -61,7 +61,7 @@ abstract class NostrDataSource(val debugName: String) {
             if (type == Relay.StateType.EOSE && subscriptionId != null && subscriptionId in subscriptions.keys) {
                 // updates a per subscripton since date
                 subscriptions[subscriptionId]?.updateEOSE(
-                    TimeUtils.fiveMinutesAgo(), // in case people's clock is slighly off.
+                    TimeUtils.oneMinuteAgo(), // in case people's clock is slighly off.
                     relay.url
                 )
             }
@@ -75,6 +75,15 @@ abstract class NostrDataSource(val debugName: String) {
 
         override fun onAuth(relay: Relay, challenge: String) {
             auth(relay, challenge)
+        }
+
+        override fun onPaymentRequired(
+            relay: Relay,
+            lnInvoice: String?,
+            description: String?,
+            otherOptionsUrl: String?
+        ) {
+            pay(relay, lnInvoice, description, otherOptionsUrl)
         }
     }
 
@@ -149,29 +158,29 @@ abstract class NostrDataSource(val debugName: String) {
 
         // Makes sure to only send an updated filter when it actually changes.
         subscriptions.values.forEach { updatedSubscription ->
-            val updatedSubscriotionNewFilters = updatedSubscription.typedFilters
+            val updatedSubscriptionNewFilters = updatedSubscription.typedFilters
 
             if (updatedSubscription.id in currentFilters.keys) {
-                if (updatedSubscriotionNewFilters == null) {
+                if (updatedSubscriptionNewFilters == null) {
                     // was active and is not active anymore, just close.
                     Client.close(updatedSubscription.id)
                 } else {
                     // was active and is still active, check if it has changed.
                     if (updatedSubscription.toJson() != currentFilters[updatedSubscription.id]) {
                         Client.close(updatedSubscription.id)
-                        Client.sendFilter(updatedSubscription.id, updatedSubscriotionNewFilters)
+                        Client.sendFilter(updatedSubscription.id, updatedSubscriptionNewFilters)
                     } else {
                         // hasn't changed, does nothing.
-                        Client.sendFilterOnlyIfDisconnected(updatedSubscription.id, updatedSubscriotionNewFilters)
+                        Client.sendFilterOnlyIfDisconnected(updatedSubscription.id, updatedSubscriptionNewFilters)
                     }
                 }
             } else {
-                if (updatedSubscriotionNewFilters == null) {
+                if (updatedSubscriptionNewFilters == null) {
                     // was not active and is still not active, does nothing
                 } else {
                     // was not active and becomes active, sends the filter.
                     if (updatedSubscription.toJson() != currentFilters[updatedSubscription.id]) {
-                        Client.sendFilter(updatedSubscription.id, updatedSubscriotionNewFilters)
+                        Client.sendFilter(updatedSubscription.id, updatedSubscriptionNewFilters)
                     }
                 }
             }
@@ -190,4 +199,5 @@ abstract class NostrDataSource(val debugName: String) {
 
     abstract fun updateChannelFilters()
     open fun auth(relay: Relay, challenge: String) = Unit
+    open fun pay(relay: Relay, lnInvoice: String?, description: String?, otherOptionsUrl: String?) = Unit
 }

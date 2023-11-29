@@ -1,17 +1,15 @@
 package com.vitorpamplona.amethyst
 
-import android.content.Context
 import android.os.Build
 import android.util.Log
+import androidx.compose.runtime.Stable
 import coil.Coil
 import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
 import coil.decode.SvgDecoder
-import coil.disk.DiskCache
-import coil.util.DebugLogger
+import coil.size.Precision
 import com.vitorpamplona.amethyst.model.Account
 import com.vitorpamplona.amethyst.model.LocalCache
-import com.vitorpamplona.amethyst.service.ExternalSignerUtils
 import com.vitorpamplona.amethyst.service.HttpClient
 import com.vitorpamplona.amethyst.service.NostrAccountDataSource
 import com.vitorpamplona.amethyst.service.NostrChannelDataSource
@@ -30,22 +28,19 @@ import com.vitorpamplona.amethyst.service.NostrThreadDataSource
 import com.vitorpamplona.amethyst.service.NostrUserProfileDataSource
 import com.vitorpamplona.amethyst.service.NostrVideoDataSource
 import com.vitorpamplona.amethyst.service.relays.Client
-import com.vitorpamplona.amethyst.ui.actions.ImageUploader
 import com.vitorpamplona.quartz.encoders.decodePublicKeyAsHexOrNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.io.File
 
-object ServiceManager {
-    var shouldPauseService: Boolean = true // to not open amber in a loop trying to use auth relays and registering for notifications
+@Stable
+class ServiceManager {
     private var isStarted: Boolean = false // to not open amber in a loop trying to use auth relays and registering for notifications
     private var account: Account? = null
 
     private fun start(account: Account) {
         this.account = account
-        ExternalSignerUtils.account = account
         start()
     }
 
@@ -59,7 +54,7 @@ object ServiceManager {
         val myAccount = account
 
         // Resets Proxy Use
-        HttpClient.start(account)
+        HttpClient.start(account?.proxy)
         OptOutFromFilters.start(account?.warnAboutPostsWithReports ?: true, account?.filterSpamFromStrangers ?: true)
         Coil.setImageLoader {
             Amethyst.instance.imageLoaderBuilder().components {
@@ -69,8 +64,9 @@ object ServiceManager {
                     add(GifDecoder.Factory())
                 }
                 add(SvgDecoder.Factory())
-            }.logger(DebugLogger())
+            } // .logger(DebugLogger())
                 .okHttpClient { HttpClient.getHttpClient() }
+                .precision(Precision.INEXACT)
                 .respectCacheHeaders(false)
                 .build()
         }
@@ -84,7 +80,6 @@ object ServiceManager {
             NostrChatroomListDataSource.account = myAccount
             NostrVideoDataSource.account = myAccount
             NostrDiscoveryDataSource.account = myAccount
-            ImageUploader.account = myAccount
 
             // Notification Elements
             NostrHomeDataSource.start()
@@ -175,10 +170,8 @@ object ServiceManager {
         }
     }
 
-    fun forceRestartIfItShould() {
-        if (shouldPauseService) {
-            forceRestart(null, true, true)
-        }
+    fun forceRestart() {
+        forceRestart(null, true, true)
     }
 
     fun justStart() {
@@ -189,28 +182,3 @@ object ServiceManager {
         forceRestart(null, false, true)
     }
 }
-
-object SingletonDiskCache {
-
-    private const val DIRECTORY = "image_cache"
-    private var instance: DiskCache? = null
-
-    @Synchronized
-    fun get(context: Context): DiskCache {
-        return instance ?: run {
-            // Create the singleton disk cache instance.
-            DiskCache.Builder()
-                .directory(context.safeCacheDir.resolve(DIRECTORY))
-                .maxSizePercent(0.2)
-                .maximumMaxSizeBytes(500L * 1024 * 1024) // 250MB
-                .build()
-                .also { instance = it }
-        }
-    }
-}
-
-internal val Context.safeCacheDir: File
-    get() {
-        val cacheDir = checkNotNull(cacheDir) { "cacheDir == null" }
-        return cacheDir.apply { mkdirs() }
-    }

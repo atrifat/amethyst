@@ -13,8 +13,8 @@ android {
         applicationId "com.vitorpamplona.amethyst"
         minSdk 26
         targetSdk 34
-        versionCode 330
-        versionName "0.80.7"
+        versionCode 331
+        versionName "0.81.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -158,7 +158,7 @@ android {
 dependencies {
     implementation project(path: ':quartz')
     implementation "androidx.core:core-ktx:$core_ktx_version"
-    implementation 'androidx.activity:activity-compose:1.8.0'
+    implementation 'androidx.activity:activity-compose:1.8.1'
     implementation "androidx.compose.ui:ui:$compose_ui_version"
     implementation "androidx.compose.ui:ui-tooling-preview:$compose_ui_version"
 
@@ -202,9 +202,13 @@ dependencies {
     implementation 'androidx.security:security-crypto-ktx:1.1.0-alpha06'
 
     // view videos
-    implementation "androidx.media3:media3-exoplayer:${exoplayer_version}"
+    implementation "androidx.media3:media3-exoplayer:$media3_version"
+    implementation "androidx.media3:media3-exoplayer-hls:$media3_version"
+    implementation "androidx.media3:media3-ui:$media3_version"
+    implementation "androidx.media3:media3-session:$media3_version"
+
     // important for proxy / tor
-    implementation "androidx.media3:media3-datasource-okhttp:${exoplayer_version}"
+    implementation "androidx.media3:media3-datasource-okhttp:$media3_version"
 
     // Load images from the web.
     implementation "io.coil-kt:coil-compose:$coil_version"
@@ -235,18 +239,15 @@ dependencies {
 
     // Language picker and Theme chooser
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation "androidx.media3:media3-exoplayer-hls:$media3_version"
-    implementation "androidx.media3:media3-ui:$media3_version"
-    implementation "androidx.media3:media3-session:$media3_version"
 
     // Local model for language identification
     playImplementation 'com.google.mlkit:language-id:17.0.4'
 
     // Google services model the translate text
-    playImplementation 'com.google.mlkit:translate:17.0.1'
+    playImplementation 'com.google.mlkit:translate:17.0.2'
 
     // PushNotifications
-    playImplementation platform('com.google.firebase:firebase-bom:32.4.1')
+    playImplementation platform('com.google.firebase:firebase-bom:32.6.0')
     playImplementation 'com.google.firebase:firebase-messaging-ktx'
 
     //PushNotifications(FDroid)
@@ -272,6 +273,7 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'io.mockk:mockk:1.13.8'
     androidTestImplementation 'androidx.test.ext:junit:1.2.0-alpha01'
+    androidTestImplementation "androidx.test.ext:junit-ktx:1.2.0-alpha01"
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
     androidTestImplementation "androidx.compose.ui:ui-test-junit4:$compose_ui_version"
     debugImplementation "androidx.compose.ui:ui-tooling:$compose_ui_version"

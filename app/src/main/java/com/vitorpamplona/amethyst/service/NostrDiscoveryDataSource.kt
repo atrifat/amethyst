@@ -1,5 +1,6 @@
 package com.vitorpamplona.amethyst.service
 
+import com.vitorpamplona.amethyst.Amethyst
 import com.vitorpamplona.amethyst.model.Account
 import com.vitorpamplona.amethyst.service.relays.EOSEAccount
 import com.vitorpamplona.amethyst.service.relays.FeedType
@@ -12,14 +13,37 @@ import com.vitorpamplona.quartz.events.CommunityDefinitionEvent
 import com.vitorpamplona.quartz.events.CommunityPostApprovalEvent
 import com.vitorpamplona.quartz.events.LiveActivitiesChatMessageEvent
 import com.vitorpamplona.quartz.events.LiveActivitiesEvent
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 object NostrDiscoveryDataSource : NostrDataSource("DiscoveryFeed") {
     lateinit var account: Account
 
+    val scope = Amethyst.instance.applicationIOScope
     val latestEOSEs = EOSEAccount()
 
+    var job: Job? = null
+
+    override fun start() {
+        job?.cancel()
+        job = scope.launch(Dispatchers.IO) {
+            account.liveDiscoveryFollowLists.collect {
+                if (this@NostrDiscoveryDataSource::account.isInitialized) {
+                    invalidateFilters()
+                }
+            }
+        }
+        super.start()
+    }
+
+    override fun stop() {
+        super.stop()
+        job?.cancel()
+    }
+
     fun createLiveStreamFilter(): List<TypedFilter> {
-        val follows = account.selectedUsersFollowList(account.defaultDiscoveryFollowList)?.toList()
+        val follows = account.liveDiscoveryFollowLists.value?.users?.toList()
 
         return listOfNotNull(
             TypedFilter(
@@ -28,7 +52,7 @@ object NostrDiscoveryDataSource : NostrDataSource("DiscoveryFeed") {
                     authors = follows,
                     kinds = listOf(LiveActivitiesChatMessageEvent.kind, LiveActivitiesEvent.kind),
                     limit = 300,
-                    since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList)?.relayList
+                    since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList.value)?.relayList
                 )
             ),
             follows?.let {
@@ -38,7 +62,7 @@ object NostrDiscoveryDataSource : NostrDataSource("DiscoveryFeed") {
                         tags = mapOf("p" to it),
                         kinds = listOf(LiveActivitiesEvent.kind),
                         limit = 100,
-                        since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList)?.relayList
+                        since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList.value)?.relayList
                     )
                 )
             }
@@ -46,7 +70,7 @@ object NostrDiscoveryDataSource : NostrDataSource("DiscoveryFeed") {
     }
 
     fun createPublicChatFilter(): List<TypedFilter> {
-        val follows = account.selectedUsersFollowList(account.defaultDiscoveryFollowList)?.toList()
+        val follows = account.liveDiscoveryFollowLists.value?.users?.toList()
         val followChats = account.selectedChatsFollowList().toList()
 
         return listOf(
@@ -56,7 +80,7 @@ object NostrDiscoveryDataSource : NostrDataSource("DiscoveryFeed") {
                     authors = follows,
                     kinds = listOf(ChannelCreateEvent.kind, ChannelMetadataEvent.kind, ChannelMessageEvent.kind),
                     limit = 300,
-                    since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList)?.relayList
+                    since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList.value)?.relayList
                 )
             ),
             TypedFilter(
@@ -65,14 +89,14 @@ object NostrDiscoveryDataSource : NostrDataSource("DiscoveryFeed") {
                     ids = followChats,
                     kinds = listOf(ChannelCreateEvent.kind),
                     limit = 300,
-                    since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList)?.relayList
+                    since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList.value)?.relayList
                 )
             )
         )
     }
 
     fun createCommunitiesFilter(): TypedFilter {
-        val follows = account.selectedUsersFollowList(account.defaultDiscoveryFollowList)?.toList()
+        val follows = account.liveDiscoveryFollowLists.value?.users?.toList()
 
         return TypedFilter(
             types = setOf(FeedType.GLOBAL),
@@ -80,13 +104,13 @@ object NostrDiscoveryDataSource : NostrDataSource("DiscoveryFeed") {
                 authors = follows,
                 kinds = listOf(CommunityDefinitionEvent.kind, CommunityPostApprovalEvent.kind),
                 limit = 300,
-                since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList)?.relayList
+                since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList.value)?.relayList
             )
         )
     }
 
     fun createLiveStreamTagsFilter(): TypedFilter? {
-        val hashToLoad = account.selectedTagsFollowList(account.defaultDiscoveryFollowList)
+        val hashToLoad = account.liveDiscoveryFollowLists.value?.hashtags?.toList()
 
         if (hashToLoad.isNullOrEmpty()) return null
 
@@ -100,13 +124,13 @@ object NostrDiscoveryDataSource : NostrDataSource("DiscoveryFeed") {
                     }.flatten()
                 ),
                 limit = 300,
-                since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList)?.relayList
+                since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList.value)?.relayList
             )
         )
     }
 
     fun createLiveStreamGeohashesFilter(): TypedFilter? {
-        val hashToLoad = account.selectedGeohashesFollowList(account.defaultDiscoveryFollowList)
+        val hashToLoad = account.liveDiscoveryFollowLists.value?.geotags?.toList()
 
         if (hashToLoad.isNullOrEmpty()) return null
 
@@ -120,13 +144,13 @@ object NostrDiscoveryDataSource : NostrDataSource("DiscoveryFeed") {
                     }.flatten()
                 ),
                 limit = 300,
-                since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList)?.relayList
+                since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList.value)?.relayList
             )
         )
     }
 
     fun createPublicChatsTagsFilter(): TypedFilter? {
-        val hashToLoad = account.selectedTagsFollowList(account.defaultDiscoveryFollowList)
+        val hashToLoad = account.liveDiscoveryFollowLists.value?.hashtags?.toList()
 
         if (hashToLoad.isNullOrEmpty()) return null
 
@@ -140,13 +164,13 @@ object NostrDiscoveryDataSource : NostrDataSource("DiscoveryFeed") {
                     }.flatten()
                 ),
                 limit = 300,
-                since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList)?.relayList
+                since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList.value)?.relayList
             )
         )
     }
 
     fun createPublicChatsGeohashesFilter(): TypedFilter? {
-        val hashToLoad = account.selectedGeohashesFollowList(account.defaultDiscoveryFollowList)
+        val hashToLoad = account.liveDiscoveryFollowLists.value?.geotags?.toList()
 
         if (hashToLoad.isNullOrEmpty()) return null
 
@@ -160,13 +184,13 @@ object NostrDiscoveryDataSource : NostrDataSource("DiscoveryFeed") {
                     }.flatten()
                 ),
                 limit = 300,
-                since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList)?.relayList
+                since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList.value)?.relayList
             )
         )
     }
 
     fun createCommunitiesTagsFilter(): TypedFilter? {
-        val hashToLoad = account.selectedTagsFollowList(account.defaultDiscoveryFollowList)
+        val hashToLoad = account.liveDiscoveryFollowLists.value?.hashtags?.toList()
 
         if (hashToLoad.isNullOrEmpty()) return null
 
@@ -180,13 +204,13 @@ object NostrDiscoveryDataSource : NostrDataSource("DiscoveryFeed") {
                     }.flatten()
                 ),
                 limit = 300,
-                since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList)?.relayList
+                since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList.value)?.relayList
             )
         )
     }
 
     fun createCommunitiesGeohashesFilter(): TypedFilter? {
-        val hashToLoad = account.selectedGeohashesFollowList(account.defaultDiscoveryFollowList)
+        val hashToLoad = account.liveDiscoveryFollowLists.value?.geotags?.toList()
 
         if (hashToLoad.isNullOrEmpty()) return null
 
@@ -200,13 +224,13 @@ object NostrDiscoveryDataSource : NostrDataSource("DiscoveryFeed") {
                     }.flatten()
                 ),
                 limit = 300,
-                since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList)?.relayList
+                since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultDiscoveryFollowList.value)?.relayList
             )
         )
     }
 
     val discoveryFeedChannel = requestNewChannel() { time, relayUrl ->
-        latestEOSEs.addOrUpdate(account.userProfile(), account.defaultDiscoveryFollowList, relayUrl, time)
+        latestEOSEs.addOrUpdate(account.userProfile(), account.defaultDiscoveryFollowList.value, relayUrl, time)
     }
 
     override fun updateChannelFilters() {

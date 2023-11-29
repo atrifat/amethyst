@@ -42,6 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.distinctUntilChanged
 import androidx.lifecycle.map
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -214,7 +215,9 @@ private fun AddMuteWordTextField(accountViewModel: AccountViewModel) {
             value = currentWordToAdd.value,
             onValueChange = { currentWordToAdd.value = it },
             label = { Text(text = stringResource(R.string.hide_new_word_label)) },
-            modifier = Modifier.fillMaxWidth().padding(10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
             placeholder = {
                 Text(
                     text = stringResource(R.string.hide_new_word_label),
@@ -260,7 +263,7 @@ fun WatchAccountAndBlockList(
     accountViewModel: AccountViewModel
 ) {
     val accountState by accountViewModel.accountLiveData.observeAsState()
-    val blockListState by accountViewModel.account.getBlockListNote().live().metadata.observeAsState()
+    val blockListState by accountViewModel.account.flowHiddenUsers.collectAsStateWithLifecycle()
 
     LaunchedEffect(accountViewModel, accountState, blockListState) {
         feedViewModel.invalidateData()
@@ -305,14 +308,10 @@ fun MutedWordActionOptions(
     if (isMutedWord == true) {
         ShowWordButton {
             if (!accountViewModel.isWriteable()) {
-                if (accountViewModel.loggedInWithExternalSigner()) {
-                    accountViewModel.showWord(word)
-                } else {
-                    accountViewModel.toast(
-                        R.string.read_only_user,
-                        R.string.login_with_a_private_key_to_be_able_to_show_word
-                    )
-                }
+                accountViewModel.toast(
+                    R.string.read_only_user,
+                    R.string.login_with_a_private_key_to_be_able_to_show_word
+                )
             } else {
                 accountViewModel.showWord(word)
             }
@@ -320,14 +319,10 @@ fun MutedWordActionOptions(
     } else {
         HideWordButton {
             if (!accountViewModel.isWriteable()) {
-                if (accountViewModel.loggedInWithExternalSigner()) {
-                    accountViewModel.hideWord(word)
-                } else {
-                    accountViewModel.toast(
-                        R.string.read_only_user,
-                        R.string.login_with_a_private_key_to_be_able_to_hide_word
-                    )
-                }
+                accountViewModel.toast(
+                    R.string.read_only_user,
+                    R.string.login_with_a_private_key_to_be_able_to_hide_word
+                )
             } else {
                 accountViewModel.hideWord(word)
             }

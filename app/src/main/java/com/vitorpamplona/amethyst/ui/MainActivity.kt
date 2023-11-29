@@ -25,7 +25,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.adaptive.calculateDisplayFeatures
 import com.vitorpamplona.amethyst.LocalPreferences
 import com.vitorpamplona.amethyst.ServiceManager
-import com.vitorpamplona.amethyst.service.ExternalSignerUtils
 import com.vitorpamplona.amethyst.service.lang.LanguageTranslatorService
 import com.vitorpamplona.amethyst.service.notifications.PushNotificationUtils
 import com.vitorpamplona.amethyst.ui.components.DefaultMutedSetting
@@ -50,16 +49,23 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.util.Timer
+import kotlin.concurrent.schedule
 
 class MainActivity : AppCompatActivity() {
     private val isOnMobileDataState = mutableStateOf(false)
+    private val isOnWifiDataState = mutableStateOf(false)
+
+    // Service Manager is only active when the activity is active.
+    val serviceManager = ServiceManager()
+    private var shouldPauseService = true
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     @RequiresApi(Build.VERSION_CODES.R)
     override fun onCreate(savedInstanceState: Bundle?) {
-        ExternalSignerUtils.start(this)
-
         super.onCreate(savedInstanceState)
+
+        Log.d("Lifetime Event", "MainActivity.onCreate")
 
         setContent {
             val sharedPreferencesViewModel: SharedPreferencesViewModel = viewModel()
@@ -88,23 +94,30 @@ class MainActivity : AppCompatActivity() {
                         accountStateViewModel.tryLoginExistingAccountAsync()
                     }
 
-                    AccountScreen(accountStateViewModel, sharedPreferencesViewModel)
+                    AccountScreen(accountStateViewModel, sharedPreferencesViewModel, serviceManager)
                 }
             }
         }
+    }
+
+    fun prepareToLaunchSigner() {
+        shouldPauseService = false
     }
 
     @OptIn(DelicateCoroutinesApi::class)
     override fun onResume() {
         super.onResume()
 
+        Log.d("Lifetime Event", "MainActivity.onResume")
+
         // starts muted every time
         DefaultMutedSetting.value = true
 
-        // Only starts after login
-        if (ServiceManager.shouldPauseService) {
+        // Keep connection alive if it's calling the signer app
+        Log.d("shouldPauseService", "shouldPauseService onResume: $shouldPauseService")
+        if (shouldPauseService) {
             GlobalScope.launch(Dispatchers.IO) {
-                ServiceManager.justStart()
+                serviceManager.justStart()
             }
         }
 
@@ -113,11 +126,18 @@ class MainActivity : AppCompatActivity() {
         }
 
         (getSystemService(ConnectivityManager::class.java) as ConnectivityManager).registerDefaultNetworkCallback(networkCallback)
+
+        // resets state until next External Signer Call
+        Timer().schedule(350) {
+            shouldPauseService = true
+        }
     }
 
     override fun onPause() {
+        Log.d("Lifetime Event", "MainActivity.onPause")
+
         LanguageTranslatorService.clear()
-        ServiceManager.cleanObservers()
+        serviceManager.cleanObservers()
 
         // if (BuildConfig.DEBUG) {
         GlobalScope.launch(Dispatchers.IO) {
@@ -125,9 +145,10 @@ class MainActivity : AppCompatActivity() {
         }
         // }
 
-        if (ServiceManager.shouldPauseService) {
+        Log.d("shouldPauseService", "shouldPauseService onPause: $shouldPauseService")
+        if (shouldPauseService) {
             GlobalScope.launch(Dispatchers.IO) {
-                ServiceManager.pauseForGood()
+                serviceManager.pauseForGood()
             }
         }
 
@@ -137,11 +158,33 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
     }
 
+    override fun onStart() {
+        super.onStart()
+
+        Log.d("Lifetime Event", "MainActivity.onStart")
+    }
+
+    override fun onStop() {
+        super.onStop()
+
+        // Graph doesn't completely clear.
+        // GlobalScope.launch(Dispatchers.Default) {
+        //    serviceManager.trimMemory()
+        // }
+
+        Log.d("Lifetime Event", "MainActivity.onStop")
+    }
+
     override fun onDestroy() {
+        Log.d("Lifetime Event", "MainActivity.onDestroy")
+
+        GlobalScope.launch(Dispatchers.IO) {
+            keepPlayingMutex?.stop()
+            keepPlayingMutex?.release()
+            keepPlayingMutex = null
+        }
+
         super.onDestroy()
-        keepPlayingMutex?.stop()
-        keepPlayingMutex?.release()
-        keepPlayingMutex = null
     }
 
     /**
@@ -153,7 +196,7 @@ class MainActivity : AppCompatActivity() {
         super.onTrimMemory(level)
         println("Trim Memory $level")
         GlobalScope.launch(Dispatchers.Default) {
-            ServiceManager.trimMemory()
+            serviceManager.trimMemory()
         }
     }
 
@@ -162,8 +205,11 @@ class MainActivity : AppCompatActivity() {
         override fun onAvailable(network: Network) {
             super.onAvailable(network)
 
-            GlobalScope.launch(Dispatchers.IO) {
-                ServiceManager.forceRestartIfItShould()
+            Log.d("shouldPauseService", "shouldPauseService onAvailable: $shouldPauseService")
+            if (shouldPauseService) {
+                GlobalScope.launch(Dispatchers.IO) {
+                    serviceManager.forceRestart()
+                }
             }
         }
 
@@ -179,10 +225,25 @@ class MainActivity : AppCompatActivity() {
                 val isOnWifi = networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
                 Log.d("ServiceManager NetworkCallback", "onCapabilitiesChanged: ${network.networkHandle} hasMobileData $isOnMobileData hasWifi $isOnWifi")
 
+                var changedNetwork = false
+
                 if (isOnMobileDataState.value != isOnMobileData) {
                     isOnMobileDataState.value = isOnMobileData
 
-                    ServiceManager.forceRestartIfItShould()
+                    changedNetwork = true
+                }
+
+                if (isOnWifiDataState.value != isOnWifi) {
+                    isOnWifiDataState.value = isOnWifi
+
+                    changedNetwork = true
+                }
+
+                Log.d("shouldPauseService", "shouldPauseService onCapabilitiesChanged: $shouldPauseService")
+                if (changedNetwork && shouldPauseService) {
+                    GlobalScope.launch(Dispatchers.IO) {
+                        serviceManager.forceRestart()
+                    }
                 }
             }
         }

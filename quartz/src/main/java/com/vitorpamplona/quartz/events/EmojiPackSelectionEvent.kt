@@ -7,6 +7,7 @@ import com.vitorpamplona.quartz.crypto.CryptoUtils
 import com.vitorpamplona.quartz.crypto.KeyPair
 import com.vitorpamplona.quartz.encoders.ATag
 import com.vitorpamplona.quartz.encoders.HexKey
+import com.vitorpamplona.quartz.signers.NostrSigner
 
 @Immutable
 class EmojiPackSelectionEvent(
@@ -17,31 +18,26 @@ class EmojiPackSelectionEvent(
     content: String,
     sig: HexKey
 ) : BaseAddressableEvent(id, pubKey, createdAt, kind, tags, content, sig) {
+    override fun dTag() = fixedDTag
+
     companion object {
         const val kind = 10030
+        const val fixedDTag = ""
 
         fun create(
             listOfEmojiPacks: List<ATag>?,
-            keyPair: KeyPair,
-            createdAt: Long = TimeUtils.now()
-        ): EmojiPackSelectionEvent {
+            signer: NostrSigner,
+            createdAt: Long = TimeUtils.now(),
+            onReady: (EmojiPackSelectionEvent) -> Unit
+        ) {
             val msg = ""
-            val pubKey = keyPair.pubKey.toHexKey()
             val tags = mutableListOf<List<String>>()
 
             listOfEmojiPacks?.forEach {
                 tags.add(listOf("a", it.toTag()))
             }
 
-            val id = generateId(pubKey, createdAt, kind, tags, msg)
-            val sig = if (keyPair.privKey == null) null else CryptoUtils.sign(id, keyPair.privKey)
-            return EmojiPackSelectionEvent(id.toHexKey(), pubKey, createdAt, tags, msg, sig?.toHexKey() ?: "")
-        }
-
-        fun create(
-            unsignedEvent: EmojiPackSelectionEvent, signature: String
-        ): EmojiPackSelectionEvent {
-            return EmojiPackSelectionEvent(unsignedEvent.id, unsignedEvent.pubKey, unsignedEvent.createdAt, unsignedEvent.tags, unsignedEvent.content, signature)
+            signer.sign(createdAt, kind, tags, msg, onReady)
         }
     }
 }

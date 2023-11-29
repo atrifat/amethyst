@@ -7,16 +7,18 @@ import com.vitorpamplona.amethyst.model.Note
 import com.vitorpamplona.amethyst.model.ParticipantListBuilder
 import com.vitorpamplona.quartz.events.ChannelCreateEvent
 import com.vitorpamplona.quartz.events.IsInPublicChatChannel
+import com.vitorpamplona.quartz.events.MuteListEvent
 import com.vitorpamplona.quartz.events.PeopleListEvent
 import com.vitorpamplona.quartz.utils.TimeUtils
 
 open class DiscoverChatFeedFilter(val account: Account) : AdditiveFeedFilter<Note>() {
     override fun feedKey(): String {
-        return account.userProfile().pubkeyHex + "-" + account.defaultDiscoveryFollowList
+        return account.userProfile().pubkeyHex + "-" + account.defaultDiscoveryFollowList.value
     }
 
     override fun showHiddenKey(): Boolean {
-        return account.defaultDiscoveryFollowList == PeopleListEvent.blockListFor(account.userProfile().pubkeyHex)
+        return account.defaultDiscoveryFollowList.value == PeopleListEvent.blockListFor(account.userProfile().pubkeyHex) ||
+            account.defaultDiscoveryFollowList.value == MuteListEvent.blockListFor(account.userProfile().pubkeyHex)
     }
 
     override fun feed(): List<Note> {
@@ -33,12 +35,12 @@ open class DiscoverChatFeedFilter(val account: Account) : AdditiveFeedFilter<Not
 
     protected open fun innerApplyFilter(collection: Collection<Note>): Set<Note> {
         val now = TimeUtils.now()
-        val isGlobal = account.defaultDiscoveryFollowList == GLOBAL_FOLLOWS
+        val isGlobal = account.defaultDiscoveryFollowList.value == GLOBAL_FOLLOWS
         val isHiddenList = showHiddenKey()
 
-        val followingKeySet = account.selectedUsersFollowList(account.defaultDiscoveryFollowList) ?: emptySet()
-        val followingTagSet = account.selectedTagsFollowList(account.defaultDiscoveryFollowList) ?: emptySet()
-        val followingGeohashSet = account.selectedGeohashesFollowList(account.defaultDiscoveryFollowList) ?: emptySet()
+        val followingKeySet = account.liveDiscoveryFollowLists.value?.users ?: emptySet()
+        val followingTagSet = account.liveDiscoveryFollowLists.value?.hashtags ?: emptySet()
+        val followingGeohashSet = account.liveDiscoveryFollowLists.value?.geotags ?: emptySet()
 
         val createEvents = collection.filter { it.event is ChannelCreateEvent }
         val anyOtherChannelEvent = collection
@@ -60,7 +62,7 @@ open class DiscoverChatFeedFilter(val account: Account) : AdditiveFeedFilter<Not
     }
 
     override fun sort(collection: Set<Note>): List<Note> {
-        val followingKeySet = account.selectedUsersFollowList(account.defaultDiscoveryFollowList)
+        val followingKeySet = account.liveDiscoveryFollowLists.value?.users ?: account.liveKind3Follows.value.users
 
         val counter = ParticipantListBuilder()
         val participantCounts = collection.associate {

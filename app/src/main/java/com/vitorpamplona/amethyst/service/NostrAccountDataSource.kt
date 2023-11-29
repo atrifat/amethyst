@@ -23,6 +23,7 @@ import com.vitorpamplona.quartz.events.GiftWrapEvent
 import com.vitorpamplona.quartz.events.LnZapEvent
 import com.vitorpamplona.quartz.events.LnZapPaymentResponseEvent
 import com.vitorpamplona.quartz.events.MetadataEvent
+import com.vitorpamplona.quartz.events.MuteListEvent
 import com.vitorpamplona.quartz.events.PeopleListEvent
 import com.vitorpamplona.quartz.events.PollNoteEvent
 import com.vitorpamplona.quartz.events.ReactionEvent
@@ -32,6 +33,7 @@ import com.vitorpamplona.quartz.events.SealedGossipEvent
 import com.vitorpamplona.quartz.events.StatusEvent
 import com.vitorpamplona.quartz.events.TextNoteEvent
 
+// TODO: Migrate this to a property of AccountVi
 object NostrAccountDataSource : NostrDataSource("AccountData") {
     lateinit var account: Account
 
@@ -86,7 +88,7 @@ object NostrAccountDataSource : NostrDataSource("AccountData") {
         return TypedFilter(
             types = COMMON_FEED_TYPES,
             filter = JsonFilter(
-                kinds = listOf(BookmarkListEvent.kind, PeopleListEvent.kind),
+                kinds = listOf(BookmarkListEvent.kind, PeopleListEvent.kind, MuteListEvent.kind),
                 authors = listOf(account.userProfile().pubkeyHex),
                 limit = 100
             )
@@ -99,7 +101,7 @@ object NostrAccountDataSource : NostrDataSource("AccountData") {
             filter = JsonFilter(
                 kinds = listOf(ReportEvent.kind),
                 authors = listOf(account.userProfile().pubkeyHex),
-                since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultNotificationFollowList)?.relayList
+                since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultNotificationFollowList.value)?.relayList
             )
         )
     }
@@ -131,7 +133,7 @@ object NostrAccountDataSource : NostrDataSource("AccountData") {
             ),
             tags = mapOf("p" to listOf(account.userProfile().pubkeyHex)),
             limit = 4000,
-            since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultNotificationFollowList)?.relayList
+            since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultNotificationFollowList.value)?.relayList
         )
     )
 
@@ -145,7 +147,7 @@ object NostrAccountDataSource : NostrDataSource("AccountData") {
 
     val accountChannel = requestNewChannel { time, relayUrl ->
         if (hasLoadedTheBasics[account.userProfile()] != null) {
-            latestEOSEs.addOrUpdate(account.userProfile(), account.defaultNotificationFollowList, relayUrl, time)
+            latestEOSEs.addOrUpdate(account.userProfile(), account.defaultNotificationFollowList.value, relayUrl, time)
         } else {
             hasLoadedTheBasics[account.userProfile()] = true
 
@@ -158,51 +160,21 @@ object NostrAccountDataSource : NostrDataSource("AccountData") {
 
         if (LocalCache.justVerify(event)) {
             if (event is GiftWrapEvent) {
-                val privateKey = account.keyPair.privKey
-                if (privateKey != null) {
-                    event.cachedGift(privateKey)?.let {
-                        this.consume(it, relay)
-                    }
-                } else if (account.loginWithExternalSigner) {
-                    var cached = ExternalSignerUtils.cachedDecryptedContent[event.id]
-                    if (cached == null) {
-                        ExternalSignerUtils.decrypt(
-                            event.content,
-                            event.pubKey,
-                            event.id,
-                            SignerType.NIP44_DECRYPT
-                        )
-                        cached = ExternalSignerUtils.cachedDecryptedContent[event.id] ?: ""
-                    }
-                    event.cachedGift(account.keyPair.pubKey, cached)?.let {
-                        this.consume(it, relay)
-                    }
+                // Avoid decrypting over and over again if the event already exist.
+                if (LocalCache.getNoteIfExists(event.id) != null) return
+
+                event.cachedGift(account.signer) {
+                    this.consume(it, relay)
                 }
             }
 
             if (event is SealedGossipEvent) {
-                val privateKey = account.keyPair.privKey
-                if (privateKey != null) {
-                    event.cachedGossip(privateKey)?.let {
-                        LocalCache.justConsume(it, relay)
-                    }
-                } else if (account.loginWithExternalSigner) {
-                    var cached = ExternalSignerUtils.cachedDecryptedContent[event.id]
-                    if (cached == null) {
-                        ExternalSignerUtils.decrypt(
-                            event.content,
-                            event.pubKey,
-                            event.id,
-                            SignerType.NIP44_DECRYPT
-                        )
-                        cached = ExternalSignerUtils.cachedDecryptedContent[event.id] ?: ""
-                    }
-                    event.cachedGossip(account.keyPair.pubKey, cached)?.let {
-                        LocalCache.justConsume(it, relay)
-                    }
-                }
+                // Avoid decrypting over and over again if the event already exist.
+                if (LocalCache.getNoteIfExists(event.id) != null) return
 
-                // Don't store sealed gossips to avoid rebroadcasting by mistake.
+                event.cachedGossip(account.signer) {
+                    LocalCache.justConsume(it, relay)
+                }
             } else {
                 LocalCache.justConsume(event, relay)
             }
@@ -225,11 +197,13 @@ object NostrAccountDataSource : NostrDataSource("AccountData") {
         LocalCache.getNoteIfExists(noteEvent.id())?.addRelay(relay)
 
         if (noteEvent is GiftWrapEvent) {
-            val gift = noteEvent.cachedGift(privKey) ?: return
-            markInnerAsSeenOnRelay(gift, privKey, relay)
+            noteEvent.cachedGift(account.signer) { gift ->
+                markInnerAsSeenOnRelay(gift, privKey, relay)
+            }
         } else if (noteEvent is SealedGossipEvent) {
-            val rumor = noteEvent.cachedGossip(privKey) ?: return
-            markInnerAsSeenOnRelay(rumor, privKey, relay)
+            noteEvent.cachedGossip(account.signer) { rumor ->
+                markInnerAsSeenOnRelay(rumor, privKey, relay)
+            }
         }
     }
 
@@ -262,13 +236,20 @@ object NostrAccountDataSource : NostrDataSource("AccountData") {
         super.auth(relay, challenge)
 
         if (this::account.isInitialized) {
-            val event = account.createAuthEvent(relay, challenge)
-            if (event != null) {
+            account.createAuthEvent(relay, challenge) {
                 Client.send(
-                    event,
+                    it,
                     relay.url
                 )
             }
+        }
+    }
+
+    override fun pay(relay: Relay, lnInvoice: String?, description: String?, otherOptionsUrl: String?) {
+        super.pay(relay, lnInvoice, description, otherOptionsUrl)
+
+        if (this::account.isInitialized) {
+            account.addPaymentRequestIfNew(Account.PaymentRequest(relay.url, lnInvoice, description, otherOptionsUrl))
         }
     }
 }

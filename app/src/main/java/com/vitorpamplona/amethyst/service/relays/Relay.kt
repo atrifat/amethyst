@@ -207,7 +207,7 @@ class Relay(
             "EVENT" -> {
                 val event = Event.fromJson(msgArray.get(2))
 
-                // Log.w("Relay", "Relay onEVENT $url, $channel")
+                // Log.w("Relay", "Relay onEVENT ${event.kind} $url, $channel ${msgArray.get(2)}")
                 listeners.forEach {
                     it.onEvent(this@Relay, channel, event)
                     if (afterEOSE) {
@@ -244,8 +244,12 @@ class Relay(
                 // Log.w("Relay", "Relay$url, ${msg[1].asString}")
                 it.onAuth(this@Relay, msgArray[1].asText())
             }
+            "PAY" -> listeners.forEach {
+                // Log.w("Relay", "Relay$url, ${msg[1].asString}")
+                it.onPaymentRequired(this@Relay, msgArray[1].asText(), msgArray[2].asText(), msgArray[3].asText())
+            }
             else -> listeners.forEach {
-                // Log.w("Relay", "Relay something else $url, $channel")
+                Log.w("Relay", "Unsupported message: $newMessage")
                 it.onError(
                     this@Relay,
                     channel,
@@ -276,7 +280,7 @@ class Relay(
                     if (filters.isNotEmpty()) {
                         val request =
                             """["REQ","$requestId",${filters.take(10).joinToString(",") { it.filter.toJson(url) }}]"""
-                        // println("FILTERSSENT $url $request")
+                        // Log.d("Relay", "onFilterSent $url $requestId $request")
                         socket?.send(request)
                         eventUploadCounterInBytes += request.bytesUsedInMemory()
                         afterEOSE = false
@@ -393,5 +397,10 @@ class Relay(
          * @param type is 0 for disconnect and 1 for connect
          */
         fun onRelayStateChange(relay: Relay, type: StateType, channel: String?)
+
+        /**
+         * Relay sent an invoice
+         */
+        fun onPaymentRequired(relay: Relay, lnInvoice: String?, description: String?, otherOptionsUrl: String?)
     }
 }

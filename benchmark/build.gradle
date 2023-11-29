@@ -8,6 +8,11 @@ android {
     namespace 'com.vitorpamplona.amethyst.benchmark'
     compileSdk 34
 
+    defaultConfig {
+        // Enable measuring on an emulator, or devices with low battery
+        testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] = "EMULATOR,LOW-BATTERY"
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -41,7 +46,7 @@ dependencies {
     androidTestImplementation 'androidx.test:runner:1.5.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.benchmark:benchmark-junit4:1.2.0'
+    androidTestImplementation 'androidx.benchmark:benchmark-junit4:1.2.1'
     androidTestImplementation project(path: ':quartz')
 
     // Add your dependencies here. Note that you cannot benchmark code

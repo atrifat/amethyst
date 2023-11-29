@@ -313,7 +313,7 @@ fun CheckHiddenNoteCompose(
             }.distinctUntilChanged()
         }.observeAsState(accountViewModel.isNoteHidden(note))
 
-        Crossfade(targetState = isHidden) {
+        Crossfade(targetState = isHidden, label = "CheckHiddenNoteCompose") {
             if (!it) {
                 LoadedNoteCompose(
                     note = note,
@@ -353,17 +353,13 @@ fun LoadedNoteCompose(
         )
     }
 
-    val scope = rememberCoroutineScope()
-
     WatchForReports(note, accountViewModel) { newState ->
         if (state != newState) {
-            scope.launch(Dispatchers.Main) {
-                state = newState
-            }
+            state = newState
         }
     }
 
-    Crossfade(targetState = state) {
+    Crossfade(targetState = state, label = "LoadedNoteCompose") {
         RenderReportState(
             it,
             note,
@@ -398,7 +394,7 @@ fun RenderReportState(
 ) {
     var showReportedNote by remember { mutableStateOf(false) }
 
-    Crossfade(targetState = !state.isAcceptable && !showReportedNote) { showHiddenNote ->
+    Crossfade(targetState = !state.isAcceptable && !showReportedNote, label = "RenderReportState") { showHiddenNote ->
         if (showHiddenNote) {
             HiddenNote(
                 state.relevantReports,
@@ -1319,6 +1315,52 @@ fun authorRouteFor(note: Note): String {
 }
 
 @Composable
+fun LoadDecryptedContent(
+    note: Note,
+    accountViewModel: AccountViewModel,
+    inner: @Composable (String) -> Unit
+) {
+    var decryptedContent by remember(note.event) {
+        mutableStateOf(
+            accountViewModel.cachedDecrypt(note)
+        )
+    }
+
+    decryptedContent?.let {
+        inner(it)
+    } ?: run {
+        LaunchedEffect(key1 = decryptedContent) {
+            accountViewModel.decrypt(note) {
+                decryptedContent = it
+            }
+        }
+    }
+}
+
+@Composable
+fun LoadDecryptedContentOrNull(
+    note: Note,
+    accountViewModel: AccountViewModel,
+    inner: @Composable (String?) -> Unit
+) {
+    var decryptedContent by remember(note.event) {
+        mutableStateOf(
+            accountViewModel.cachedDecrypt(note)
+        )
+    }
+
+    if (decryptedContent == null) {
+        LaunchedEffect(key1 = decryptedContent) {
+            accountViewModel.decrypt(note) {
+                decryptedContent = it
+            }
+        }
+    }
+
+    inner(decryptedContent)
+}
+
+@Composable
 fun RenderTextEvent(
     note: Note,
     makeItShort: Boolean,
@@ -1327,18 +1369,19 @@ fun RenderTextEvent(
     accountViewModel: AccountViewModel,
     nav: (String) -> Unit
 ) {
-    val eventContent = remember(note.event) {
-        val subject = (note.event as? TextNoteEvent)?.subject()?.ifEmpty { null }
-        val body = accountViewModel.decrypt(note)
+    LoadDecryptedContent(note, accountViewModel) { body ->
+        val eventContent by remember(note.event) {
+            derivedStateOf {
+                val subject = (note.event as? TextNoteEvent)?.subject()?.ifEmpty { null }
 
-        if (!subject.isNullOrBlank() && body?.split("\n")?.get(0)?.contains(subject) == false) {
-            "### $subject\n$body"
-        } else {
-            body
+                if (!subject.isNullOrBlank() && !body.split("\n")[0].contains(subject)) {
+                    "### $subject\n$body"
+                } else {
+                    body
+                }
+            }
         }
-    }
 
-    if (eventContent != null) {
         val isAuthorTheLoggedUser = remember(note.event) { accountViewModel.isLoggedUser(note.author) }
 
         if (makeItShort && isAuthorTheLoggedUser) {
@@ -1636,17 +1679,16 @@ private fun RenderPrivateMessage(
 
     val withMe = remember { noteEvent.with(accountViewModel.userProfile().pubkeyHex) }
     if (withMe) {
-        val eventContent by remember { mutableStateOf(accountViewModel.decrypt(note)) }
-        val hashtags = remember(note.event?.id()) { note.event?.hashtags()?.toImmutableList() ?: persistentListOf() }
-        val modifier = remember(note.event?.id()) { Modifier.fillMaxWidth() }
-        val isAuthorTheLoggedUser = remember(note.event?.id()) { accountViewModel.isLoggedUser(note.author) }
+        LoadDecryptedContent(note, accountViewModel) { eventContent ->
+            val hashtags = remember(note.event?.id()) { note.event?.hashtags()?.toImmutableList() ?: persistentListOf() }
+            val modifier = remember(note.event?.id()) { Modifier.fillMaxWidth() }
+            val isAuthorTheLoggedUser = remember(note.event?.id()) { accountViewModel.isLoggedUser(note.author) }
 
-        val tags = remember(note) { note.event?.tags()?.toImmutableListOfLists() ?: EmptyTagList }
+            val tags = remember(note) { note.event?.tags()?.toImmutableListOfLists() ?: EmptyTagList }
 
-        if (eventContent != null) {
             if (makeItShort && isAuthorTheLoggedUser) {
                 Text(
-                    text = eventContent!!,
+                    text = eventContent,
                     color = MaterialTheme.colorScheme.placeholderText,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -1657,7 +1699,7 @@ private fun RenderPrivateMessage(
                     accountViewModel = accountViewModel
                 ) {
                     TranslatableRichTextViewer(
-                        content = eventContent!!,
+                        content = eventContent,
                         canPreview = canPreview && !makeItShort,
                         modifier = modifier,
                         tags = tags,
@@ -1667,7 +1709,7 @@ private fun RenderPrivateMessage(
                     )
                 }
 
-                DisplayUncitedHashtags(hashtags, eventContent!!, nav)
+                DisplayUncitedHashtags(hashtags, eventContent, nav)
             }
         }
     } else {
@@ -2225,19 +2267,14 @@ private fun EmojiListOptions(
                 }.distinctUntilChanged()
             }.observeAsState()
 
-            Crossfade(targetState = hasAddedThis) {
-                val scope = rememberCoroutineScope()
+            Crossfade(targetState = hasAddedThis, label = "EmojiListOptions") {
                 if (it != true) {
                     AddButton() {
-                        scope.launch(Dispatchers.IO) {
-                            accountViewModel.addEmojiPack(usersEmojiList, emojiPackNote)
-                        }
+                        accountViewModel.addEmojiPack(usersEmojiList, emojiPackNote)
                     }
                 } else {
                     RemoveButton {
-                        scope.launch(Dispatchers.IO) {
-                            accountViewModel.removeEmojiPack(usersEmojiList, emojiPackNote)
-                        }
+                        accountViewModel.removeEmojiPack(usersEmojiList, emojiPackNote)
                     }
                 }
             }
@@ -2554,21 +2591,27 @@ fun SecondUserInfoRow(
     val noteEvent = remember { note.event } ?: return
     val noteAuthor = remember { note.author } ?: return
 
-    Row(verticalAlignment = CenterVertically, modifier = UserNameMaxRowHeight) {
+    Row(
+        verticalAlignment = CenterVertically,
+        modifier = UserNameMaxRowHeight
+    ) {
         ObserveDisplayNip05Status(noteAuthor, remember { Modifier.weight(1f) }, accountViewModel, nav)
 
         val geo = remember { noteEvent.getGeoHash() }
         if (geo != null) {
+            Spacer(StdHorzSpacer)
             DisplayLocation(geo, nav)
         }
 
         val baseReward = remember { noteEvent.getReward()?.let { Reward(it) } }
         if (baseReward != null) {
+            Spacer(StdHorzSpacer)
             DisplayReward(baseReward, note, accountViewModel, nav)
         }
 
         val pow = remember { noteEvent.getPoWRank() }
         if (pow > 20) {
+            Spacer(StdHorzSpacer)
             DisplayPoW(pow)
         }
     }
@@ -2909,7 +2952,13 @@ private fun GenericRepostSection(
             baseAuthorPicture()
         }
 
-        Box(remember { Size18Modifier.align(Alignment.BottomStart).padding(1.dp) }) {
+        Box(
+            remember {
+                Size18Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(1.dp)
+            }
+        ) {
             RepostedIcon(modifier = Size18Modifier, MaterialTheme.colorScheme.placeholderText)
         }
 
@@ -3593,18 +3642,7 @@ fun AudioHeader(noteEvent: AudioHeaderEvent, note: Note, accountViewModel: Accou
 
     val defaultBackground = MaterialTheme.colorScheme.background
     val background = remember { mutableStateOf(defaultBackground) }
-    val tags = remember(noteEvent) { noteEvent?.tags()?.toImmutableListOfLists() ?: EmptyTagList }
-
-    val eventContent = remember(note.event) {
-        val subject = (note.event as? TextNoteEvent)?.subject()?.ifEmpty { null }
-        val body = accountViewModel.decrypt(note)
-
-        if (!subject.isNullOrBlank() && body?.split("\n")?.get(0)?.contains(subject) == false) {
-            "### $subject\n$body"
-        } else {
-            body
-        }
-    }
+    val tags = remember(noteEvent) { noteEvent.tags()?.toImmutableListOfLists() ?: EmptyTagList }
 
     Row(modifier = Modifier.padding(top = 5.dp)) {
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {

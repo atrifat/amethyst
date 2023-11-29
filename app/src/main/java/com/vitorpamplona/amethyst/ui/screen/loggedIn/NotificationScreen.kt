@@ -15,7 +15,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -53,6 +52,7 @@ import com.vitorpamplona.amethyst.ui.navigation.Route
 import com.vitorpamplona.amethyst.ui.note.OneGiga
 import com.vitorpamplona.amethyst.ui.note.OneKilo
 import com.vitorpamplona.amethyst.ui.note.OneMega
+import com.vitorpamplona.amethyst.ui.note.TenKilo
 import com.vitorpamplona.amethyst.ui.note.UserReactionsRow
 import com.vitorpamplona.amethyst.ui.note.UserReactionsViewModel
 import com.vitorpamplona.amethyst.ui.note.showAmount
@@ -86,6 +86,7 @@ fun NotificationScreen(
     DisposableEffect(lifeCycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
+                NostrAccountDataSource.account = accountViewModel.account
                 NostrAccountDataSource.invalidateFilters()
             }
         }
@@ -141,9 +142,10 @@ fun WatchAccountForNotifications(
     notifFeedViewModel: NotificationViewModel,
     accountViewModel: AccountViewModel
 ) {
-    val accountState by accountViewModel.accountLiveData.observeAsState()
+    val listState by accountViewModel.account.liveNotificationFollowLists.collectAsStateWithLifecycle()
 
-    LaunchedEffect(accountViewModel, accountState?.account?.defaultNotificationFollowList) {
+    LaunchedEffect(accountViewModel, listState) {
+        NostrAccountDataSource.account = accountViewModel.account
         NostrAccountDataSource.invalidateFilters()
         notifFeedViewModel.checkKeysInvalidateDataAndSendToTop()
     }
@@ -289,7 +291,7 @@ fun showAmountAxis(amount: BigDecimal?): String {
     return when {
         amount >= OneGiga -> dfG.format(amount.div(OneGiga).setScale(0, RoundingMode.HALF_UP))
         amount >= OneMega -> dfM.format(amount.div(OneMega).setScale(0, RoundingMode.HALF_UP))
-        amount >= OneKilo -> dfK.format(amount.div(OneKilo).setScale(0, RoundingMode.HALF_UP))
+        amount >= TenKilo -> dfK.format(amount.div(OneKilo).setScale(0, RoundingMode.HALF_UP))
         else -> dfN.format(amount)
     }
 }

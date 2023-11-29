@@ -4,8 +4,9 @@ import android.content.Context
 import android.graphics.drawable.Drawable
 import android.util.Log
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -15,6 +16,7 @@ import androidx.lifecycle.viewModelScope
 import coil.imageLoader
 import coil.request.ImageRequest
 import com.vitorpamplona.amethyst.R
+import com.vitorpamplona.amethyst.ServiceManager
 import com.vitorpamplona.amethyst.model.Account
 import com.vitorpamplona.amethyst.model.AccountState
 import com.vitorpamplona.amethyst.model.AddressableNote
@@ -25,6 +27,7 @@ import com.vitorpamplona.amethyst.model.RelayInformation
 import com.vitorpamplona.amethyst.model.UrlCachedPreviewer
 import com.vitorpamplona.amethyst.model.User
 import com.vitorpamplona.amethyst.model.UserState
+import com.vitorpamplona.amethyst.service.HttpClient
 import com.vitorpamplona.amethyst.service.Nip05Verifier
 import com.vitorpamplona.amethyst.service.Nip11CachedRetriever
 import com.vitorpamplona.amethyst.service.Nip11Retriever
@@ -68,7 +71,6 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import java.math.BigDecimal
 import java.util.Locale
 import kotlin.time.measureTimedValue
 
@@ -85,28 +87,14 @@ class ResourceToastMsg(val titleResId: Int, val resourceId: Int) : ToastMsg()
 class AccountViewModel(val account: Account, val settings: SettingsState) : ViewModel(), Dao {
     val accountLiveData: LiveData<AccountState> = account.live.map { it }
     val accountLanguagesLiveData: LiveData<AccountState> = account.liveLanguages.map { it }
-    val accountMarkAsReadUpdates = mutableStateOf(0)
+    val accountMarkAsReadUpdates = mutableIntStateOf(0)
 
     val userFollows: LiveData<UserState> = account.userProfile().live().follows.map { it }
     val userRelays: LiveData<UserState> = account.userProfile().live().relays.map { it }
 
     val toasts = MutableSharedFlow<ToastMsg?>(0, 3, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
-    val discoveryListLiveData = account.live.map {
-        it.account.defaultDiscoveryFollowList
-    }.distinctUntilChanged()
-
-    val homeListLiveData = account.live.map {
-        it.account.defaultHomeFollowList
-    }.distinctUntilChanged()
-
-    val notificationListLiveData = account.live.map {
-        it.account.defaultNotificationFollowList
-    }.distinctUntilChanged()
-
-    val storiesListLiveData = account.live.map {
-        it.account.defaultStoriesFollowList
-    }.distinctUntilChanged()
+    var serviceManager: ServiceManager? = null
 
     val showSensitiveContentChanges = account.live.map {
         it.account.showSensitiveContent
@@ -134,15 +122,11 @@ class AccountViewModel(val account: Account, val settings: SettingsState) : View
         return account.isWriteable()
     }
 
-    fun loggedInWithExternalSigner(): Boolean {
-        return account.loginWithExternalSigner
-    }
-
     fun userProfile(): User {
         return account.userProfile()
     }
 
-    fun reactTo(note: Note, reaction: String) {
+    suspend fun reactTo(note: Note, reaction: String) {
         account.reactTo(note, reaction)
     }
 
@@ -169,15 +153,14 @@ class AccountViewModel(val account: Account, val settings: SettingsState) : View
     }
 
     fun isNoteHidden(note: Note): Boolean {
-        val isSensitive = note.event?.isSensitive() ?: false
-        return account.isHidden(note.author!!) || (isSensitive && account.showSensitiveContent == false)
+        return note.isHiddenFor(account.flowHiddenUsers.value)
     }
 
     fun hasReactedTo(baseNote: Note, reaction: String): Boolean {
         return account.hasReacted(baseNote, reaction)
     }
 
-    fun deleteReactionTo(note: Note, reaction: String) {
+    suspend fun deleteReactionTo(note: Note, reaction: String) {
         account.delete(account.reactionTo(note, reaction))
     }
 
@@ -193,37 +176,42 @@ class AccountViewModel(val account: Account, val settings: SettingsState) : View
 
     fun calculateIfNoteWasZappedByAccount(zappedNote: Note, onWasZapped: (Boolean) -> Unit) {
         viewModelScope.launch(Dispatchers.Default) {
-            onWasZapped(account.calculateIfNoteWasZappedByAccount(zappedNote))
+            account.calculateIfNoteWasZappedByAccount(zappedNote) {
+                onWasZapped(true)
+            }
         }
     }
 
-    suspend fun calculateZapAmount(zappedNote: Note): BigDecimal {
-        return account.calculateZappedAmount(zappedNote)
-    }
-
     fun calculateZapAmount(zappedNote: Note, onZapAmount: (String) -> Unit) {
-        viewModelScope.launch(Dispatchers.IO) {
-            onZapAmount(showAmount(account.calculateZappedAmount(zappedNote)))
+        if (zappedNote.zapPayments.isNotEmpty()) {
+            viewModelScope.launch(Dispatchers.IO) {
+                account.calculateZappedAmount(zappedNote) {
+                    onZapAmount(showAmount(it))
+                }
+            }
+        } else {
+            onZapAmount(showAmount(zappedNote.zapsAmount))
         }
     }
 
     fun calculateZapraiser(zappedNote: Note, onZapraiserStatus: (ZapraiserStatus) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             val zapraiserAmount = zappedNote.event?.zapraiserAmount() ?: 0
-            val newZapAmount = calculateZapAmount(zappedNote)
-            var percentage = newZapAmount.div(zapraiserAmount.toBigDecimal()).toFloat()
+            account.calculateZappedAmount(zappedNote) { newZapAmount ->
+                var percentage = newZapAmount.div(zapraiserAmount.toBigDecimal()).toFloat()
 
-            if (percentage > 1) {
-                percentage = 1f
-            }
+                if (percentage > 1) {
+                    percentage = 1f
+                }
 
-            val newZapraiserProgress = percentage
-            val newZapraiserLeft = if (percentage > 0.99) {
-                "0"
-            } else {
-                showAmount((zapraiserAmount * (1 - percentage)).toBigDecimal())
+                val newZapraiserProgress = percentage
+                val newZapraiserLeft = if (percentage > 0.99) {
+                    "0"
+                } else {
+                    showAmount((zapraiserAmount * (1 - percentage)).toBigDecimal())
+                }
+                onZapraiserStatus(ZapraiserStatus(newZapraiserProgress, newZapraiserLeft))
             }
-            onZapraiserStatus(ZapraiserStatus(newZapraiserProgress, newZapraiserLeft))
         }
     }
 
@@ -232,14 +220,14 @@ class AccountViewModel(val account: Account, val settings: SettingsState) : View
         onNewState: (ImmutableList<ZapAmountCommentNotification>) -> Unit
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            val list = ArrayList<ZapAmountCommentNotification>(zaps.size)
-            zaps.forEach {
-                innerDecryptAmountMessage(it.request, it.response)?.let {
-                    list.add(it)
+            allOrNothingSigningOperations<CombinedZap, ZapAmountCommentNotification>(
+                remainingTos = zaps,
+                runRequestFor = { next, onReady ->
+                    innerDecryptAmountMessage(next.request, next.response, onReady)
                 }
+            ) {
+                onNewState(it.toImmutableList())
             }
-
-            onNewState(list.toImmutableList())
         }
     }
 
@@ -248,14 +236,14 @@ class AccountViewModel(val account: Account, val settings: SettingsState) : View
         onNewState: (ImmutableList<ZapAmountCommentNotification>) -> Unit
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            val list = ArrayList<ZapAmountCommentNotification>(baseNote.zaps.size)
-            baseNote.zaps.forEach {
-                innerDecryptAmountMessage(it.key, it.value)?.let {
-                    list.add(it)
+            allOrNothingSigningOperations<Pair<Note, Note?>, ZapAmountCommentNotification>(
+                remainingTos = baseNote.zaps.toList(),
+                runRequestFor = { next, onReady ->
+                    innerDecryptAmountMessage(next.first, next.second, onReady)
                 }
+            ) {
+                onNewState(it.toImmutableList())
             }
-
-            onNewState(list.toImmutableList())
         }
     }
 
@@ -265,37 +253,43 @@ class AccountViewModel(val account: Account, val settings: SettingsState) : View
         onNewState: (ZapAmountCommentNotification?) -> Unit
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            onNewState(innerDecryptAmountMessage(zapRequest, zapEvent))
+            innerDecryptAmountMessage(zapRequest, zapEvent, onNewState)
         }
     }
 
-    private suspend fun innerDecryptAmountMessage(
+    private fun innerDecryptAmountMessage(
         zapRequest: Note,
-        zapEvent: Note?
-    ): ZapAmountCommentNotification? {
+        zapEvent: Note?,
+        onReady: (ZapAmountCommentNotification) -> Unit
+    ) {
         checkNotInMainThread()
 
         (zapRequest.event as? LnZapRequestEvent)?.let {
-            val decryptedContent = decryptZap(zapRequest)
-            val amount = (zapEvent?.event as? LnZapEvent)?.amount
-            if (decryptedContent != null) {
-                val newAuthor = LocalCache.getOrCreateUser(decryptedContent.pubKey)
-                return ZapAmountCommentNotification(
-                    newAuthor,
-                    decryptedContent.content.ifBlank { null },
-                    showAmountAxis(amount)
-                )
+            if (it.isPrivateZap()) {
+                decryptZap(zapRequest) { decryptedContent ->
+                    val amount = (zapEvent?.event as? LnZapEvent)?.amount
+                    val newAuthor = LocalCache.getOrCreateUser(decryptedContent.pubKey)
+                    onReady(
+                        ZapAmountCommentNotification(
+                            newAuthor,
+                            decryptedContent.content.ifBlank { null },
+                            showAmountAxis(amount)
+                        )
+                    )
+                }
             } else {
+                val amount = (zapEvent?.event as? LnZapEvent)?.amount
                 if (!zapRequest.event?.content().isNullOrBlank() || amount != null) {
-                    return ZapAmountCommentNotification(
-                        zapRequest.author,
-                        zapRequest.event?.content()?.ifBlank { null },
-                        showAmountAxis(amount)
+                    onReady(
+                        ZapAmountCommentNotification(
+                            zapRequest.author,
+                            zapRequest.event?.content()?.ifBlank { null },
+                            showAmountAxis(amount)
+                        )
                     )
                 }
             }
         }
-        return null
     }
 
     fun zap(
@@ -315,7 +309,9 @@ class AccountViewModel(val account: Account, val settings: SettingsState) : View
     }
 
     fun report(note: Note, type: ReportEvent.ReportType, content: String = "") {
-        account.report(note, type, content)
+        viewModelScope.launch(Dispatchers.IO) {
+            account.report(note, type, content)
+        }
     }
 
     fun report(user: User, type: ReportEvent.ReportType) {
@@ -332,47 +328,43 @@ class AccountViewModel(val account: Account, val settings: SettingsState) : View
     }
 
     fun removeEmojiPack(usersEmojiList: Note, emojiList: Note) {
-        account.removeEmojiPack(usersEmojiList, emojiList)
+        viewModelScope.launch(Dispatchers.IO) {
+            account.removeEmojiPack(usersEmojiList, emojiList)
+        }
     }
 
     fun addEmojiPack(usersEmojiList: Note, emojiList: Note) {
-        account.addEmojiPack(usersEmojiList, emojiList)
+        viewModelScope.launch(Dispatchers.IO) {
+            account.addEmojiPack(usersEmojiList, emojiList)
+        }
     }
 
     fun addPrivateBookmark(note: Note) {
-        account.addPrivateBookmark(note)
-    }
-
-    fun addPrivateBookmark(note: Note, decryptedContent: String) {
-        account.addPrivateBookmark(note, decryptedContent)
-    }
-
-    fun addPublicBookmark(note: Note, decryptedContent: String) {
-        account.addPublicBookmark(note, decryptedContent)
-    }
-
-    fun removePublicBookmark(note: Note, decryptedContent: String) {
-        account.removePublicBookmark(note, decryptedContent)
+        viewModelScope.launch(Dispatchers.IO) {
+            account.addBookmark(note, true)
+        }
     }
 
     fun addPublicBookmark(note: Note) {
-        account.addPublicBookmark(note)
-    }
-
-    fun removePrivateBookmark(note: Note, decryptedContent: String) {
-        account.removePrivateBookmark(note, decryptedContent)
+        viewModelScope.launch(Dispatchers.IO) {
+            account.addBookmark(note, false)
+        }
     }
 
     fun removePrivateBookmark(note: Note) {
-        account.removePrivateBookmark(note)
+        viewModelScope.launch(Dispatchers.IO) {
+            account.removeBookmark(note, true)
+        }
     }
 
     fun removePublicBookmark(note: Note) {
-        account.removePublicBookmark(note)
+        viewModelScope.launch(Dispatchers.IO) {
+            account.removeBookmark(note, false)
+        }
     }
 
-    fun isInPrivateBookmarks(note: Note): Boolean {
-        return account.isInPrivateBookmarks(note)
+    fun isInPrivateBookmarks(note: Note, onReady: (Boolean) -> Unit) {
+        account.isInPrivateBookmarks(note, onReady)
     }
 
     fun isInPublicBookmarks(note: Note): Boolean {
@@ -384,15 +376,23 @@ class AccountViewModel(val account: Account, val settings: SettingsState) : View
     }
 
     fun delete(note: Note) {
-        account.delete(note)
+        viewModelScope.launch(Dispatchers.IO) {
+            account.delete(note)
+        }
     }
 
-    fun decrypt(note: Note): String? {
-        return account.decryptContent(note)
+    fun cachedDecrypt(note: Note): String? {
+        return account.cachedDecryptContent(note)
     }
 
-    fun decryptZap(note: Note): Event? {
-        return account.decryptZapContentAuthor(note)
+    fun decrypt(note: Note, onReady: (String) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            account.decryptContent(note, onReady)
+        }
+    }
+
+    fun decryptZap(note: Note, onReady: (Event) -> Unit) {
+        account.decryptZapContentAuthor(note, onReady)
     }
 
     fun translateTo(lang: Locale) {
@@ -472,7 +472,9 @@ class AccountViewModel(val account: Account, val settings: SettingsState) : View
         get() = account.hideDeleteRequestDialog
 
     fun dontShowDeleteRequestDialog() {
-        account.setHideDeleteRequestDialog()
+        viewModelScope.launch(Dispatchers.IO) {
+            account.setHideDeleteRequestDialog()
+        }
     }
 
     val hideNIP24WarningDialog: Boolean
@@ -547,11 +549,11 @@ class AccountViewModel(val account: Account, val settings: SettingsState) : View
         }
     }
 
-    fun unwrap(event: GiftWrapEvent): Event? {
-        return account.unwrap(event)
+    fun unwrap(event: GiftWrapEvent, onReady: (Event) -> Unit) {
+        account.unwrap(event, onReady)
     }
-    fun unseal(event: SealedGossipEvent): Event? {
-        return account.unseal(event)
+    fun unseal(event: SealedGossipEvent, onReady: (Event) -> Unit) {
+        account.unseal(event, onReady)
     }
 
     fun show(user: User) {
@@ -855,6 +857,18 @@ class AccountViewModel(val account: Account, val settings: SettingsState) : View
         }
     }
 
+    fun enableTor(
+        checked: Boolean,
+        portNumber: MutableState<String>
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            account.proxyPort = portNumber.value.toInt()
+            account.proxy = HttpClient.initProxy(checked, "127.0.0.1", account.proxyPort)
+            account.saveable.invalidateData()
+            serviceManager?.forceRestart()
+        }
+    }
+
     class Factory(val account: Account, val settings: SettingsState) : ViewModelProvider.Factory {
         override fun <AccountViewModel : ViewModel> create(modelClass: Class<AccountViewModel>): AccountViewModel {
             return AccountViewModel(account, settings) as AccountViewModel
@@ -862,7 +876,7 @@ class AccountViewModel(val account: Account, val settings: SettingsState) : View
     }
 
     private var collectorJob: Job? = null
-    val notificationDots = HasNotificationDot(bottomNavigationItems, account)
+    val notificationDots = HasNotificationDot(bottomNavigationItems)
     private val bundlerInsert = BundledInsert<Set<Note>>(3000, Dispatchers.IO)
 
     fun invalidateInsertData(newItems: Set<Note>) {
@@ -871,9 +885,9 @@ class AccountViewModel(val account: Account, val settings: SettingsState) : View
         }
     }
 
-    suspend fun updateNotificationDots(newNotes: Set<Note> = emptySet()) {
+    fun updateNotificationDots(newNotes: Set<Note> = emptySet()) {
         val (value, elapsed) = measureTimedValue {
-            notificationDots.update(newNotes)
+            notificationDots.update(newNotes, account)
         }
         Log.d("Rendering Metrics", "Notification Dots Calculation in $elapsed for ${newNotes.size} new notes")
     }
@@ -882,7 +896,7 @@ class AccountViewModel(val account: Account, val settings: SettingsState) : View
         Log.d("Init", "AccountViewModel")
         collectorJob = viewModelScope.launch(Dispatchers.IO) {
             LocalCache.live.newEventBundles.collect { newNotes ->
-                Log.d("Rendering Metrics", "Notification Dots Calculation refresh ${this@AccountViewModel}")
+                Log.d("Rendering Metrics", "Notification Dots Calculation refresh ${this@AccountViewModel} for ${account.userProfile().toBestDisplayName()}")
                 invalidateInsertData(newNotes)
             }
         }
@@ -932,26 +946,24 @@ class AccountViewModel(val account: Account, val settings: SettingsState) : View
                 onMore()
             }
         } else {
-            if (loggedInWithExternalSigner()) {
-                if (hasBoosted(baseNote)) {
-                    deleteBoostsTo(baseNote)
-                } else {
-                    onMore()
-                }
-            } else {
-                toast(
-                    R.string.read_only_user,
-                    R.string.login_with_a_private_key_to_be_able_to_boost_posts
-                )
-            }
+            toast(
+                R.string.read_only_user,
+                R.string.login_with_a_private_key_to_be_able_to_boost_posts
+            )
+        }
+    }
+
+    fun dismissPaymentRequest(request: Account.PaymentRequest) {
+        viewModelScope.launch(Dispatchers.IO) {
+            account.dismissPaymentRequest(request)
         }
     }
 }
 
-class HasNotificationDot(bottomNavigationItems: ImmutableList<Route>, val account: Account) {
+class HasNotificationDot(bottomNavigationItems: ImmutableList<Route>) {
     val hasNewItems = bottomNavigationItems.associateWith { MutableStateFlow(false) }
 
-    fun update(newNotes: Set<Note>) {
+    fun update(newNotes: Set<Note>, account: Account) {
         checkNotInMainThread()
 
         hasNewItems.forEach {
@@ -968,3 +980,22 @@ class HasNotificationDot(bottomNavigationItems: ImmutableList<Route>, val accoun
 
 @Immutable
 data class LoadedBechLink(val baseNote: Note?, val nip19: Nip19.Return)
+
+public fun <T, K> allOrNothingSigningOperations(
+    remainingTos: List<T>,
+    runRequestFor: (T, (K) -> Unit) -> Unit,
+    output: MutableList<K> = mutableListOf(),
+    onReady: (List<K>) -> Unit
+) {
+    if (remainingTos.isEmpty()) {
+        onReady(output)
+        return
+    }
+
+    val next = remainingTos.first()
+
+    runRequestFor(next) { result: K ->
+        output.add(result)
+        allOrNothingSigningOperations(remainingTos.minus(next), runRequestFor, output, onReady)
+    }
+}

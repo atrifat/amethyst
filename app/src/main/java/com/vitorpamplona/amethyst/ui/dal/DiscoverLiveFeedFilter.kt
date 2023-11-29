@@ -9,6 +9,7 @@ import com.vitorpamplona.quartz.events.LiveActivitiesEvent
 import com.vitorpamplona.quartz.events.LiveActivitiesEvent.Companion.STATUS_ENDED
 import com.vitorpamplona.quartz.events.LiveActivitiesEvent.Companion.STATUS_LIVE
 import com.vitorpamplona.quartz.events.LiveActivitiesEvent.Companion.STATUS_PLANNED
+import com.vitorpamplona.quartz.events.MuteListEvent
 import com.vitorpamplona.quartz.events.PeopleListEvent
 import com.vitorpamplona.quartz.utils.TimeUtils
 
@@ -20,11 +21,12 @@ open class DiscoverLiveFeedFilter(
     }
 
     open fun followList(): String {
-        return account.defaultDiscoveryFollowList
+        return account.defaultDiscoveryFollowList.value
     }
 
     override fun showHiddenKey(): Boolean {
-        return followList() == PeopleListEvent.blockListFor(account.userProfile().pubkeyHex)
+        return followList() == PeopleListEvent.blockListFor(account.userProfile().pubkeyHex) ||
+            followList() == MuteListEvent.blockListFor(account.userProfile().pubkeyHex)
     }
 
     override fun feed(): List<Note> {
@@ -43,12 +45,12 @@ open class DiscoverLiveFeedFilter(
 
     protected open fun innerApplyFilter(collection: Collection<Note>): Set<Note> {
         val now = TimeUtils.now()
-        val isGlobal = account.defaultDiscoveryFollowList == GLOBAL_FOLLOWS
+        val isGlobal = account.defaultDiscoveryFollowList.value == GLOBAL_FOLLOWS
         val isHiddenList = showHiddenKey()
 
-        val followingKeySet = account.selectedUsersFollowList(followList()) ?: emptySet()
-        val followingTagSet = account.selectedTagsFollowList(followList()) ?: emptySet()
-        val followingGeohashSet = account.selectedGeohashesFollowList(followList()) ?: emptySet()
+        val followingKeySet = account.liveDiscoveryFollowLists.value?.users ?: emptySet()
+        val followingTagSet = account.liveDiscoveryFollowLists.value?.hashtags ?: emptySet()
+        val followingGeohashSet = account.liveDiscoveryFollowLists.value?.geotags ?: emptySet()
 
         val activities = collection
             .asSequence()
@@ -68,17 +70,22 @@ open class DiscoverLiveFeedFilter(
     }
 
     override fun sort(collection: Set<Note>): List<Note> {
-        val followingKeySet = account.selectedUsersFollowList(followList())
+        val followingKeySet = account.liveDiscoveryFollowLists.value?.users ?: account.liveKind3Follows.value.users
 
         val counter = ParticipantListBuilder()
         val participantCounts = collection.associate {
             it to counter.countFollowsThatParticipateOn(it, followingKeySet)
         }
 
+        val allParticipants = collection.associate {
+            it to counter.countFollowsThatParticipateOn(it, null)
+        }
+
         return collection.sortedWith(
             compareBy(
                 { convertStatusToOrder((it.event as? LiveActivitiesEvent)?.status()) },
                 { participantCounts[it] },
+                { allParticipants[it] },
                 { (it.event as? LiveActivitiesEvent)?.starts() ?: it.createdAt() },
                 { it.idHex }
             )

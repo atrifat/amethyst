@@ -6,7 +6,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vitorpamplona.amethyst.AccountInfo
 import com.vitorpamplona.amethyst.LocalPreferences
-import com.vitorpamplona.amethyst.ServiceManager
 import com.vitorpamplona.amethyst.model.Account
 import com.vitorpamplona.amethyst.service.HttpClient
 import com.vitorpamplona.quartz.crypto.KeyPair
@@ -14,6 +13,11 @@ import com.vitorpamplona.quartz.encoders.Hex
 import com.vitorpamplona.quartz.encoders.Nip19
 import com.vitorpamplona.quartz.encoders.bechToBytes
 import com.vitorpamplona.quartz.encoders.hexToByteArray
+import com.vitorpamplona.quartz.encoders.toHexKey
+import com.vitorpamplona.quartz.encoders.toNpub
+import com.vitorpamplona.quartz.signers.ExternalSignerLauncher
+import com.vitorpamplona.quartz.signers.NostrSignerExternal
+import com.vitorpamplona.quartz.signers.NostrSignerInternal
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -50,7 +54,13 @@ class AccountStateViewModel() : ViewModel() {
         _accountContent.update { AccountState.LoggedOff }
     }
 
-    suspend fun loginAndStartUI(key: String, useProxy: Boolean, proxyPort: Int, loginWithExternalSigner: Boolean = false) = withContext(Dispatchers.IO) {
+    suspend fun loginAndStartUI(
+        key: String,
+        useProxy: Boolean,
+        proxyPort: Int,
+        loginWithExternalSigner: Boolean = false,
+        packageName: String = ""
+    ) = withContext(Dispatchers.IO) {
         val parsed = Nip19.uriToRoute(key)
         val pubKeyParsed = parsed?.hex?.hexToByteArray()
         val proxy = HttpClient.initProxy(useProxy, "127.0.0.1", proxyPort)
@@ -61,16 +71,22 @@ class AccountStateViewModel() : ViewModel() {
 
         val account =
             if (loginWithExternalSigner) {
-                Account(KeyPair(pubKey = pubKeyParsed), proxy = proxy, proxyPort = proxyPort, loginWithExternalSigner = true)
+                val keyPair = KeyPair(pubKey = pubKeyParsed)
+                val localPackageName = packageName.ifBlank { "com.greenart7c3.nostrsigner" }
+                Account(keyPair, proxy = proxy, proxyPort = proxyPort, signer = NostrSignerExternal(keyPair.pubKey.toHexKey(), ExternalSignerLauncher(keyPair.pubKey.toNpub(), localPackageName)))
             } else if (key.startsWith("nsec")) {
-                Account(KeyPair(privKey = key.bechToBytes()), proxy = proxy, proxyPort = proxyPort)
+                val keyPair = KeyPair(privKey = key.bechToBytes())
+                Account(keyPair, proxy = proxy, proxyPort = proxyPort, signer = NostrSignerInternal(keyPair))
             } else if (pubKeyParsed != null) {
-                Account(KeyPair(pubKey = pubKeyParsed), proxy = proxy, proxyPort = proxyPort)
+                val keyPair = KeyPair(pubKey = pubKeyParsed)
+                Account(keyPair, proxy = proxy, proxyPort = proxyPort, signer = NostrSignerInternal(keyPair))
             } else if (EMAIL_PATTERN.matcher(key).matches()) {
+                val keyPair = KeyPair()
                 // Evaluate NIP-5
-                Account(KeyPair(), proxy = proxy, proxyPort = proxyPort)
+                Account(keyPair, proxy = proxy, proxyPort = proxyPort, signer = NostrSignerInternal(keyPair))
             } else {
-                Account(KeyPair(Hex.decode(key)), proxy = proxy, proxyPort = proxyPort)
+                val keyPair = KeyPair(Hex.decode(key))
+                Account(keyPair, proxy = proxy, proxyPort = proxyPort, signer = NostrSignerInternal(keyPair))
             }
 
         LocalPreferences.updatePrefsForLogin(account)
@@ -78,15 +94,11 @@ class AccountStateViewModel() : ViewModel() {
         startUI(account)
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
     suspend fun startUI(account: Account) = withContext(Dispatchers.Main) {
-        if (account.keyPair.privKey != null) {
+        if (account.isWriteable()) {
             _accountContent.update { AccountState.LoggedIn(account) }
         } else {
             _accountContent.update { AccountState.LoggedInViewOnly(account) }
-        }
-        GlobalScope.launch(Dispatchers.IO) {
-            ServiceManager.restartIfDifferentAccount(account)
         }
 
         account.saveable.observeForever(saveListener)
@@ -122,11 +134,12 @@ class AccountStateViewModel() : ViewModel() {
         useProxy: Boolean,
         proxyPort: Int,
         loginWithExternalSigner: Boolean = false,
+        packageName: String = "",
         onError: () -> Unit
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                loginAndStartUI(key, useProxy, proxyPort, loginWithExternalSigner)
+                loginAndStartUI(key, useProxy, proxyPort, loginWithExternalSigner, packageName)
             } catch (e: Exception) {
                 Log.e("Login", "Could not sign in", e)
                 onError()
@@ -137,7 +150,8 @@ class AccountStateViewModel() : ViewModel() {
     fun newKey(useProxy: Boolean, proxyPort: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             val proxy = HttpClient.initProxy(useProxy, "127.0.0.1", proxyPort)
-            val account = Account(KeyPair(), proxy = proxy, proxyPort = proxyPort)
+            val keyPair = KeyPair()
+            val account = Account(keyPair, proxy = proxy, proxyPort = proxyPort, signer = NostrSignerInternal(keyPair))
 
             account.follow(account.userProfile())
 

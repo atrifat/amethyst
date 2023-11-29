@@ -4,6 +4,7 @@ import com.vitorpamplona.quartz.encoders.toHexKey
 
 class EventFactory {
     companion object {
+
         fun create(
             id: String,
             pubKey: String,
@@ -55,6 +56,7 @@ class EventFactory {
             GenericRepostEvent.kind -> GenericRepostEvent(id, pubKey, createdAt, tags, content, sig)
             GiftWrapEvent.kind -> GiftWrapEvent(id, pubKey, createdAt, tags, content, sig)
             HighlightEvent.kind -> HighlightEvent(id, pubKey, createdAt, tags, content, sig)
+            HTTPAuthorizationEvent.kind -> HTTPAuthorizationEvent(id, pubKey, createdAt, tags, content, sig)
             LiveActivitiesEvent.kind -> LiveActivitiesEvent(id, pubKey, createdAt, tags, content, sig)
             LiveActivitiesChatMessageEvent.kind -> LiveActivitiesChatMessageEvent(id, pubKey, createdAt, tags, content, sig)
             LnZapEvent.kind -> LnZapEvent(id, pubKey, createdAt, tags, content, sig)
@@ -64,6 +66,7 @@ class EventFactory {
             LnZapRequestEvent.kind -> LnZapRequestEvent(id, pubKey, createdAt, tags, content, sig)
             LongTextNoteEvent.kind -> LongTextNoteEvent(id, pubKey, createdAt, tags, content, sig)
             MetadataEvent.kind -> MetadataEvent(id, pubKey, createdAt, tags, content, sig)
+            MuteListEvent.kind -> MuteListEvent(id, pubKey, createdAt, tags, content, sig)
             NNSEvent.kind -> NNSEvent(id, pubKey, createdAt, tags, content, sig)
             PeopleListEvent.kind -> PeopleListEvent(id, pubKey, createdAt, tags, content, sig)
             PinListEvent.kind -> PinListEvent(id, pubKey, createdAt, tags, content, sig)
@@ -71,6 +74,7 @@ class EventFactory {
             PrivateDmEvent.kind -> PrivateDmEvent(id, pubKey, createdAt, tags, content, sig)
             ReactionEvent.kind -> ReactionEvent(id, pubKey, createdAt, tags, content, sig)
             RecommendRelayEvent.kind -> RecommendRelayEvent(id, pubKey, createdAt, tags, content, sig)
+            RelayAuthEvent.kind -> RelayAuthEvent(id, pubKey, createdAt, tags, content, sig)
             RelaySetEvent.kind -> RelaySetEvent(id, pubKey, createdAt, tags, content, sig)
             ReportEvent.kind -> ReportEvent(id, pubKey, createdAt, tags, content, sig)
             RepostEvent.kind -> RepostEvent(id, pubKey, createdAt, tags, content, sig)

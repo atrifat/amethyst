@@ -359,15 +359,28 @@ class User(val pubkeyHex: String) {
 
     fun live(): UserLiveSet {
         if (liveSet == null) {
-            liveSet = UserLiveSet(this)
+            createOrDestroyLiveSync(true)
         }
         return liveSet!!
     }
 
     fun clearLive() {
         if (liveSet != null && liveSet?.isInUse() == false) {
-            liveSet?.destroy()
-            liveSet = null
+            createOrDestroyLiveSync(false)
+        }
+    }
+
+    @Synchronized
+    fun createOrDestroyLiveSync(create: Boolean) {
+        if (create) {
+            if (liveSet == null) {
+                liveSet = UserLiveSet(this)
+            }
+        } else {
+            if (liveSet != null && liveSet?.isInUse() == false) {
+                liveSet?.destroy()
+                liveSet = null
+            }
         }
     }
 }
@@ -396,7 +409,9 @@ class UserLiveSet(u: User) {
     val relays = innerRelays.map { it }
     val relayInfo = innerRelayInfo.map { it }
     val zaps = innerZaps.map { it }
-    val bookmarks = innerBookmarks.map { it }
+    val bookmarks = innerBookmarks.map {
+        it
+    }
     val statuses = innerStatuses.map { it }
 
     val profilePictureChanges = innerMetadata.map {

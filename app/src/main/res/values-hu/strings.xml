@@ -338,6 +338,7 @@
     <string name="follow_list_selection">Követek Lista</string>
     <string name="follow_list_kind3follows">Mindenki akit követek</string>
     <string name="follow_list_global">Globális</string>
+    <string name="follow_list_mute_list">Némítottak listája</string>
     <string name="connect_through_your_orbot_setup_markdown">        ## Kapcsolódj a TOR-on keresztül az Orbot segítségével
         \n\n1. Telepítsd az [Orbot-ot](https://play.google.com/store/apps/details?id=org.torproject.android)
         \n2. Indítsd el az Orbot-ot
@@ -509,7 +510,9 @@
     <string name="paid">Fizetve</string>
     <string name="wallet_number">Tárca: %1$s</string>
     <string name="error_opening_external_signer">Hiba az aláíró alkalmazás megnyitásakor</string>
+    <string name="error_opening_external_signer_description">Az aláíró alkalmazás nem található. Ellenőrizd, hogy az alkalmazás nincs-e eltávolítva</string>
     <string name="sign_request_rejected">Aláírási kérés elutasítva</string>
+    <string name="sign_request_rejected_description">Győződj meg arról, hogy ezt a tranzakciót az aláíró alkalmazás engedélyezte-e</string>
     <string name="no_wallet_found_with_error">Nem található tárca a Lighning számla kifizetésére (Hiba: %1$s). Kérjük, a zap-ek használatához telepítsen egy Lightning pénztárcát</string>
     <string name="no_wallet_found">Nem található tárca a Lighning számla kifizetésére. Kérjük, a zap-ek használatához telepítsen egy Lightning pénztárcát</string>
     <string name="hidden_words">Elrejtett Szavak</string>

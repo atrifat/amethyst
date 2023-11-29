@@ -9,6 +9,9 @@ import com.vitorpamplona.quartz.encoders.toHexKey
 import com.vitorpamplona.quartz.crypto.CryptoUtils
 import com.vitorpamplona.quartz.encoders.ATag
 import com.vitorpamplona.quartz.encoders.HexKey
+import com.vitorpamplona.quartz.signers.NostrSigner
+import kotlinx.collections.immutable.ImmutableSet
+import java.util.UUID
 
 @Immutable
 class MuteListEvent(
@@ -18,93 +21,195 @@ class MuteListEvent(
     tags: List<List<String>>,
     content: String,
     sig: HexKey
-) : BaseAddressableEvent(id, pubKey, createdAt, kind, tags, content, sig) {
-    fun plainContent(privKey: ByteArray): String? {
-        return try {
-            val sharedSecret = CryptoUtils.getSharedSecretNIP04(privKey, pubKey.hexToByteArray())
-
-            return CryptoUtils.decryptNIP04(content, sharedSecret)
-        } catch (e: Exception) {
-            Log.w("BookmarkList", "Error decrypting the message ${e.message}")
-            null
-        }
-    }
-
+) : GeneralListEvent(id, pubKey, createdAt, kind, tags, content, sig) {
     @Transient
-    private var privateTagsCache: List<List<String>>? = null
+    var publicAndPrivateUserCache: ImmutableSet<HexKey>? = null
+    @Transient
+    var publicAndPrivateWordCache: ImmutableSet<String>? = null
 
-    fun privateTags(privKey: ByteArray): List<List<String>>? {
-        if (privateTagsCache != null) {
-            return privateTagsCache
+    override fun dTag() = fixedDTag
+
+    fun publicAndPrivateUsersAndWords(signer: NostrSigner, onReady: (PeopleListEvent.UsersAndWords) -> Unit) {
+        publicAndPrivateUserCache?.let { userList ->
+            publicAndPrivateWordCache?.let { wordList ->
+                onReady(PeopleListEvent.UsersAndWords(userList, wordList))
+                return
+            }
         }
 
-        privateTagsCache = try {
-            plainContent(privKey)?.let { mapper.readValue<List<List<String>>>(it) }
-        } catch (e: Throwable) {
-            Log.w("BookmarkList", "Error parsing the JSON ${e.message}")
-            null
+        privateTagsOrEmpty(signer) {
+            publicAndPrivateUserCache = filterTagList("p", it)
+            publicAndPrivateWordCache = filterTagList("word", it)
+
+            publicAndPrivateUserCache?.let { userList ->
+                publicAndPrivateWordCache?.let { wordList ->
+                    onReady(
+                        PeopleListEvent.UsersAndWords(userList, wordList)
+                    )
+                }
+            }
         }
-        return privateTagsCache
-    }
-
-    fun privateTaggedUsers(privKey: ByteArray) = privateTags(privKey)?.filter { it.firstOrNull() == "p" }?.mapNotNull { it.getOrNull(1) }
-    fun privateTaggedEvents(privKey: ByteArray) = privateTags(privKey)?.filter { it.firstOrNull() == "e" }?.mapNotNull { it.getOrNull(1) }
-    fun privateTaggedAddresses(privKey: ByteArray) = privateTags(privKey)?.filter { it.firstOrNull() == "a" }?.mapNotNull {
-        val aTagValue = it.getOrNull(1)
-        val relay = it.getOrNull(2)
-
-        if (aTagValue != null) ATag.parse(aTagValue, relay) else null
     }
 
     companion object {
         const val kind = 10000
+        const val fixedDTag = ""
+
+        fun blockListFor(pubKeyHex: HexKey): String {
+            return "10000:$pubKeyHex:"
+        }
+
+        fun createListWithTag(key: String, tag: String, isPrivate: Boolean, signer: NostrSigner, createdAt: Long = TimeUtils.now(), onReady: (MuteListEvent) -> Unit) {
+            if (isPrivate) {
+                encryptTags(listOf(listOf(key, tag)), signer) { encryptedTags ->
+                    create(
+                        content = encryptedTags,
+                        tags = emptyList(),
+                        signer = signer,
+                        createdAt = createdAt,
+                        onReady = onReady
+                    )
+                }
+            } else {
+                create(
+                    content = "",
+                    tags = listOf(listOf(key, tag)),
+                    signer = signer,
+                    createdAt = createdAt,
+                    onReady = onReady
+                )
+            }
+        }
+
+        fun createListWithUser(pubKeyHex: String, isPrivate: Boolean, signer: NostrSigner, createdAt: Long = TimeUtils.now(), onReady: (MuteListEvent) -> Unit) {
+            return createListWithTag("p", pubKeyHex, isPrivate, signer, createdAt, onReady)
+        }
+
+        fun createListWithWord(word: String, isPrivate: Boolean, signer: NostrSigner, createdAt: Long = TimeUtils.now(), onReady: (MuteListEvent) -> Unit) {
+            return createListWithTag("word", word, isPrivate, signer, createdAt, onReady)
+        }
+
+        fun addUsers(earlierVersion: MuteListEvent, listPubKeyHex: List<String>, isPrivate: Boolean, signer: NostrSigner, createdAt: Long = TimeUtils.now(), onReady: (MuteListEvent) -> Unit) {
+            if (isPrivate) {
+                earlierVersion.privateTagsOrEmpty(signer) { privateTags ->
+                    encryptTags(
+                        privateTags = privateTags.plus(
+                            listPubKeyHex.map {
+                                listOf("p", it)
+                            }
+                        ),
+                        signer = signer
+                    ) { encryptedTags ->
+                        create(
+                            content = encryptedTags,
+                            tags = earlierVersion.tags,
+                            signer = signer,
+                            createdAt = createdAt,
+                            onReady = onReady
+                        )
+                    }
+                }
+            } else {
+                create(
+                    content = earlierVersion.content,
+                    tags = earlierVersion.tags.plus(
+                        listPubKeyHex.map {
+                            listOf("p", it)
+                        }
+                    ),
+                    signer = signer,
+                    createdAt = createdAt,
+                    onReady = onReady
+                )
+            }
+        }
+
+        fun addWord(earlierVersion: MuteListEvent, word: String, isPrivate: Boolean, signer: NostrSigner, createdAt: Long = TimeUtils.now(), onReady: (MuteListEvent) -> Unit) {
+            return addTag(earlierVersion, "word", word, isPrivate, signer, createdAt, onReady)
+        }
+
+        fun addUser(earlierVersion: MuteListEvent, pubKeyHex: String, isPrivate: Boolean, signer: NostrSigner, createdAt: Long = TimeUtils.now(), onReady: (MuteListEvent) -> Unit) {
+            return addTag(earlierVersion, "p", pubKeyHex, isPrivate, signer, createdAt, onReady)
+        }
+
+        fun addTag(earlierVersion: MuteListEvent, key: String, tag: String, isPrivate: Boolean, signer: NostrSigner, createdAt: Long = TimeUtils.now(), onReady: (MuteListEvent) -> Unit) {
+            earlierVersion.isTagged(key, tag, isPrivate, signer) { isTagged ->
+                if (!isTagged) {
+                    if (isPrivate) {
+                        earlierVersion.privateTagsOrEmpty(signer) { privateTags ->
+                            encryptTags(
+                                privateTags = privateTags.plus(element = listOf(key, tag)),
+                                signer = signer
+                            ) { encryptedTags ->
+                                create(
+                                    content = encryptedTags,
+                                    tags = earlierVersion.tags,
+                                    signer = signer,
+                                    createdAt = createdAt,
+                                    onReady = onReady
+                                )
+                            }
+                        }
+                    } else {
+                        create(
+                            content = earlierVersion.content,
+                            tags = earlierVersion.tags.plus(element = listOf(key, tag)),
+                            signer = signer,
+                            createdAt = createdAt,
+                            onReady = onReady
+                        )
+                    }
+                }
+            }
+        }
+
+        fun removeWord(earlierVersion: MuteListEvent, word: String, isPrivate: Boolean, signer: NostrSigner, createdAt: Long = TimeUtils.now(), onReady: (MuteListEvent) -> Unit) {
+            return removeTag(earlierVersion, "word", word, isPrivate, signer, createdAt, onReady)
+        }
+
+        fun removeUser(earlierVersion: MuteListEvent, pubKeyHex: String, isPrivate: Boolean, signer: NostrSigner, createdAt: Long = TimeUtils.now(), onReady: (MuteListEvent) -> Unit) {
+            return removeTag(earlierVersion, "p", pubKeyHex, isPrivate, signer, createdAt, onReady)
+        }
+
+        fun removeTag(earlierVersion: MuteListEvent, key: String, tag: String, isPrivate: Boolean, signer: NostrSigner, createdAt: Long = TimeUtils.now(), onReady: (MuteListEvent) -> Unit) {
+            earlierVersion.isTagged(key, tag, isPrivate, signer) { isTagged ->
+                if (isTagged) {
+                    if (isPrivate) {
+                        earlierVersion.privateTagsOrEmpty(signer) { privateTags ->
+                            encryptTags(
+                                privateTags = privateTags.filter { it.size > 1 && !(it[0] == key && it[1] == tag) },
+                                signer = signer
+                            ) { encryptedTags ->
+                                create(
+                                    content = encryptedTags,
+                                    tags = earlierVersion.tags.filter { it.size > 1 && !(it[0] == key && it[1] == tag) },
+                                    signer = signer,
+                                    createdAt = createdAt,
+                                    onReady = onReady
+                                )
+                            }
+                        }
+                    } else {
+                        create(
+                            content = earlierVersion.content,
+                            tags = earlierVersion.tags.filter { it.size > 1 && !(it[0] == key && it[1] == tag) },
+                            signer = signer,
+                            createdAt = createdAt,
+                            onReady = onReady
+                        )
+                    }
+                }
+            }
+        }
 
         fun create(
-            events: List<String>? = null,
-            users: List<String>? = null,
-            addresses: List<ATag>? = null,
-
-            privEvents: List<String>? = null,
-            privUsers: List<String>? = null,
-            privAddresses: List<ATag>? = null,
-
-            privateKey: ByteArray,
-            createdAt: Long = TimeUtils.now()
-        ): MuteListEvent {
-            val pubKey = CryptoUtils.pubkeyCreate(privateKey)
-
-            val privTags = mutableListOf<List<String>>()
-            privEvents?.forEach {
-                privTags.add(listOf("e", it))
-            }
-            privUsers?.forEach {
-                privTags.add(listOf("p", it))
-            }
-            privAddresses?.forEach {
-                privTags.add(listOf("a", it.toTag()))
-            }
-            val msg = mapper.writeValueAsString(privTags)
-
-            val content = CryptoUtils.encryptNIP04(
-                msg,
-                privateKey,
-                pubKey
-            )
-
-            val tags = mutableListOf<List<String>>()
-            events?.forEach {
-                tags.add(listOf("e", it))
-            }
-            users?.forEach {
-                tags.add(listOf("p", it))
-            }
-            addresses?.forEach {
-                tags.add(listOf("a", it.toTag()))
-            }
-
-            val id = generateId(pubKey.toHexKey(), createdAt, kind, tags, content)
-            val sig = CryptoUtils.sign(id, privateKey)
-            return MuteListEvent(id.toHexKey(), pubKey.toHexKey(), createdAt, tags, content, sig.toHexKey())
+            content: String,
+            tags: List<List<String>>,
+            signer: NostrSigner,
+            createdAt: Long = TimeUtils.now(),
+            onReady: (MuteListEvent) -> Unit
+        ) {
+            signer.sign(createdAt, kind, tags, content, onReady)
         }
     }
 }

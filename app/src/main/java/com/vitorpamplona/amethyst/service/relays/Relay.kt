@@ -59,7 +59,7 @@ class Relay(
 
     var closingTimeInSeconds = 0L
 
-    var afterEOSE = false
+    var afterEOSEPerSubscription = mutableMapOf<String, Boolean>()
 
     val authResponse = mutableMapOf<HexKey, Boolean>()
 
@@ -87,6 +87,7 @@ class Relay(
     private var connectingBlock = AtomicBoolean()
 
     fun connectAndRun(onConnected: (Relay) -> Unit) {
+        Log.d("Client", "Relay.connect $url")
         // BRB is crashing OkHttp Deflater object :(
         if (url.contains("brb.io")) return
 
@@ -184,7 +185,7 @@ class Relay(
     }
 
     fun markConnectionAsReady(pingInMs: Long, usingCompression: Boolean) {
-        this.afterEOSE = false
+        this.afterEOSEPerSubscription.clear()
         this.isReady = true
         this.pingInMs = pingInMs
         this.usingCompression = usingCompression
@@ -194,40 +195,43 @@ class Relay(
         this.socket = null
         this.isReady = false
         this.usingCompression = false
-        this.afterEOSE = false
+        this.afterEOSEPerSubscription.clear()
         this.closingTimeInSeconds = TimeUtils.now()
     }
 
     fun processNewRelayMessage(newMessage: String) {
         val msgArray = Event.mapper.readTree(newMessage)
-        val type = msgArray.get(0).asText()
-        val channel = msgArray.get(1).asText()
 
-        when (type) {
+        when (val type = msgArray.get(0).asText()) {
             "EVENT" -> {
+                val subscriptionId = msgArray.get(1).asText()
                 val event = Event.fromJson(msgArray.get(2))
 
-                // Log.w("Relay", "Relay onEVENT ${event.kind} $url, $channel ${msgArray.get(2)}")
+                // Log.w("Relay", "Relay onEVENT ${event.kind} $url, $subscriptionId ${msgArray.get(2)}")
                 listeners.forEach {
-                    it.onEvent(this@Relay, channel, event)
-                    if (afterEOSE) {
-                        it.onRelayStateChange(this@Relay, StateType.EOSE, channel)
+                    it.onEvent(this@Relay, subscriptionId, event)
+                    if (afterEOSEPerSubscription[subscriptionId] == true) {
+                        it.onRelayStateChange(this@Relay, StateType.EOSE, subscriptionId)
                     }
                 }
             }
             "EOSE" -> listeners.forEach {
-                afterEOSE = true
-                // Log.w("Relay", "Relay onEOSE $url, $channel")
-                it.onRelayStateChange(this@Relay, StateType.EOSE, channel)
+                val subscriptionId = msgArray.get(1).asText()
+
+                afterEOSEPerSubscription[subscriptionId] = true
+                // Log.w("Relay", "Relay onEOSE $url $subscriptionId")
+                it.onRelayStateChange(this@Relay, StateType.EOSE, subscriptionId)
             }
             "NOTICE" -> listeners.forEach {
-                Log.w("Relay", "Relay onNotice $url, $channel")
-                it.onError(this@Relay, channel, Error("Relay sent notice: " + channel))
+                val message = msgArray.get(1).asText()
+                Log.w("Relay", "Relay onNotice $url, $message")
+
+                it.onError(this@Relay, message, Error("Relay sent notice: $message"))
             }
             "OK" -> listeners.forEach {
                 val eventId = msgArray[1].asText()
                 val success = msgArray[2].asBoolean()
-                val message = msgArray[3].asText()
+                val message = if (msgArray.size() > 2) msgArray[3].asText() else ""
 
                 if (authResponse.containsKey(eventId)) {
                     val wasAlreadyAuthenticated = authResponse.get(eventId)
@@ -241,33 +245,37 @@ class Relay(
                 it.onSendResponse(this@Relay, eventId, success, message)
             }
             "AUTH" -> listeners.forEach {
-                // Log.w("Relay", "Relay$url, ${msg[1].asString}")
+                // Log.w("Relay", "Relay onAuth $url, ${msg[1].asString}")
                 it.onAuth(this@Relay, msgArray[1].asText())
             }
-            "PAY" -> listeners.forEach {
-                // Log.w("Relay", "Relay$url, ${msg[1].asString}")
-                it.onPaymentRequired(this@Relay, msgArray[1].asText(), msgArray[2].asText(), msgArray[3].asText())
+            "NOTIFY" -> listeners.forEach {
+                // Log.w("Relay", "Relay onNotify $url, ${msg[1].asString}")
+                it.onNotify(this@Relay, msgArray[1].asText())
+            }
+            "CLOSED" -> listeners.forEach {
+                Log.w("Relay", "Relay onClosed $url, $newMessage")
             }
             else -> listeners.forEach {
                 Log.w("Relay", "Unsupported message: $newMessage")
                 it.onError(
                     this@Relay,
-                    channel,
-                    Error("Unknown type $type on channel $channel. Msg was $newMessage")
+                    "",
+                    Error("Unknown type $type on channel. Msg was $newMessage")
                 )
             }
         }
     }
 
     fun disconnect() {
+        Log.d("Client", "Relay.disconnect $url")
         checkNotInMainThread()
 
         closingTimeInSeconds = TimeUtils.now()
-        socket?.close(1000, "Normal close")
+        socket?.cancel()
         socket = null
         isReady = false
         usingCompression = false
-        afterEOSE = false
+        afterEOSEPerSubscription.clear()
     }
 
     fun sendFilter(requestId: String) {
@@ -280,10 +288,12 @@ class Relay(
                     if (filters.isNotEmpty()) {
                         val request =
                             """["REQ","$requestId",${filters.take(10).joinToString(",") { it.filter.toJson(url) }}]"""
+
                         // Log.d("Relay", "onFilterSent $url $requestId $request")
+
                         socket?.send(request)
                         eventUploadCounterInBytes += request.bytesUsedInMemory()
-                        afterEOSE = false
+                        afterEOSEPerSubscription.clear()
                     }
                 }
             } else {
@@ -326,27 +336,23 @@ class Relay(
             eventUploadCounterInBytes += event.bytesUsedInMemory()
         } else {
             if (write) {
+                val event = """["EVENT",${signedEvent.toJson()}]"""
                 if (isConnected()) {
                     if (isReady) {
-                        val event = """["EVENT",${signedEvent.toJson()}]"""
                         socket?.send(event)
                         eventUploadCounterInBytes += event.bytesUsedInMemory()
                     }
                 } else {
-                    // waits 60 seconds to reconnect after disconnected.
-                    if (TimeUtils.now() > closingTimeInSeconds + RECONNECTING_IN_SECONDS) {
-                        // sends all filters after connection is successful.
-                        connectAndRun {
-                            checkNotInMainThread()
+                    // sends all filters after connection is successful.
+                    connectAndRun {
+                        checkNotInMainThread()
 
-                            val event = """["EVENT",${signedEvent.toJson()}]"""
-                            socket?.send(event)
-                            eventUploadCounterInBytes += event.bytesUsedInMemory()
+                        socket?.send(event)
+                        eventUploadCounterInBytes += event.bytesUsedInMemory()
 
-                            // Sends everything.
-                            Client.allSubscriptions().forEach {
-                                sendFilter(requestId = it)
-                            }
+                        // Sends everything.
+                        Client.allSubscriptions().forEach {
+                            sendFilter(requestId = it)
                         }
                     }
                 }
@@ -355,7 +361,11 @@ class Relay(
     }
 
     fun close(subscriptionId: String) {
-        socket?.send("""["CLOSE","$subscriptionId"]""")
+        checkNotInMainThread()
+
+        val msg = """["CLOSE","$subscriptionId"]"""
+        Log.d("Relay", "Close Subscription $url $msg")
+        socket?.send(msg)
     }
 
     fun isSameRelayConfig(other: Relay): Boolean {
@@ -401,6 +411,6 @@ class Relay(
         /**
          * Relay sent an invoice
          */
-        fun onPaymentRequired(relay: Relay, lnInvoice: String?, description: String?, otherOptionsUrl: String?)
+        fun onNotify(relay: Relay, description: String)
     }
 }

@@ -6,6 +6,7 @@ import com.vitorpamplona.amethyst.model.User
 import com.vitorpamplona.amethyst.service.relays.COMMON_FEED_TYPES
 import com.vitorpamplona.amethyst.service.relays.Client
 import com.vitorpamplona.amethyst.service.relays.EOSEAccount
+import com.vitorpamplona.amethyst.service.relays.EOSETime
 import com.vitorpamplona.amethyst.service.relays.JsonFilter
 import com.vitorpamplona.amethyst.service.relays.Relay
 import com.vitorpamplona.amethyst.service.relays.TypedFilter
@@ -32,6 +33,7 @@ import com.vitorpamplona.quartz.events.RepostEvent
 import com.vitorpamplona.quartz.events.SealedGossipEvent
 import com.vitorpamplona.quartz.events.StatusEvent
 import com.vitorpamplona.quartz.events.TextNoteEvent
+import com.vitorpamplona.quartz.utils.TimeUtils
 
 // TODO: Migrate this to a property of AccountVi
 object NostrAccountDataSource : NostrDataSource("AccountData") {
@@ -116,26 +118,32 @@ object NostrAccountDataSource : NostrDataSource("AccountData") {
         )
     }
 
-    fun createNotificationFilter() = TypedFilter(
-        types = COMMON_FEED_TYPES,
-        filter = JsonFilter(
-            kinds = listOf(
-                TextNoteEvent.kind,
-                PollNoteEvent.kind,
-                ReactionEvent.kind,
-                RepostEvent.kind,
-                GenericRepostEvent.kind,
-                ReportEvent.kind,
-                LnZapEvent.kind,
-                LnZapPaymentResponseEvent.kind,
-                ChannelMessageEvent.kind,
-                BadgeAwardEvent.kind
-            ),
-            tags = mapOf("p" to listOf(account.userProfile().pubkeyHex)),
-            limit = 4000,
-            since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultNotificationFollowList.value)?.relayList
+    fun createNotificationFilter(): TypedFilter {
+        val since = latestEOSEs.users[account.userProfile()]?.followList?.get(account.defaultNotificationFollowList.value)?.relayList
+            ?: account.activeRelays()?.associate { it.url to EOSETime(TimeUtils.oneWeekAgo()) }
+            ?: account.convertLocalRelays().associate { it.url to EOSETime(TimeUtils.oneWeekAgo()) }
+
+        return TypedFilter(
+            types = COMMON_FEED_TYPES,
+            filter = JsonFilter(
+                kinds = listOf(
+                    TextNoteEvent.kind,
+                    PollNoteEvent.kind,
+                    ReactionEvent.kind,
+                    RepostEvent.kind,
+                    GenericRepostEvent.kind,
+                    ReportEvent.kind,
+                    LnZapEvent.kind,
+                    LnZapPaymentResponseEvent.kind,
+                    ChannelMessageEvent.kind,
+                    BadgeAwardEvent.kind
+                ),
+                tags = mapOf("p" to listOf(account.userProfile().pubkeyHex)),
+                limit = 4000,
+                since = since
+            )
         )
-    )
+    }
 
     fun createGiftWrapsToMeFilter() = TypedFilter(
         types = COMMON_FEED_TYPES,
@@ -245,11 +253,11 @@ object NostrAccountDataSource : NostrDataSource("AccountData") {
         }
     }
 
-    override fun pay(relay: Relay, lnInvoice: String?, description: String?, otherOptionsUrl: String?) {
-        super.pay(relay, lnInvoice, description, otherOptionsUrl)
+    override fun notify(relay: Relay, description: String) {
+        super.notify(relay, description)
 
         if (this::account.isInitialized) {
-            account.addPaymentRequestIfNew(Account.PaymentRequest(relay.url, lnInvoice, description, otherOptionsUrl))
+            account.addPaymentRequestIfNew(Account.PaymentRequest(relay.url, description))
         }
     }
 }

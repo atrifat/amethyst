@@ -35,6 +35,8 @@ import com.vitorpamplona.quartz.signers.NostrSignerExternal
 import com.vitorpamplona.quartz.signers.NostrSignerInternal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
@@ -57,9 +59,6 @@ private object PrefKeys {
     const val SAVED_ACCOUNTS = "all_saved_accounts"
     const val NOSTR_PRIVKEY = "nostr_privkey"
     const val NOSTR_PUBKEY = "nostr_pubkey"
-    const val FOLLOWING_CHANNELS = "following_channels"
-    const val FOLLOWING_COMMUNITIES = "following_communities"
-    const val HIDDEN_USERS = "hidden_users"
     const val RELAYS = "relays"
     const val DONT_TRANSLATE_FROM = "dontTranslateFrom"
     const val LANGUAGE_PREFS = "languagePreferences"
@@ -102,6 +101,7 @@ object LocalPreferences {
 
     private var _currentAccount: String? = null
     private var _savedAccounts: List<AccountInfo>? = null
+    private var _cachedAccounts: MutableMap<String, Account?> = mutableMapOf()
 
     suspend fun currentAccount(): String? {
         if (_currentAccount == null) {
@@ -289,9 +289,9 @@ object LocalPreferences {
     }
 
     suspend fun loadCurrentAccountFromEncryptedStorage(): Account? {
-        val acc = loadCurrentAccountFromEncryptedStorage(currentAccount())
-        acc?.registerObservers()
-        return acc
+        return currentAccount()?.let {
+            loadCurrentAccountFromEncryptedStorage(it)
+        }
     }
 
     suspend fun migrateOldSharedSettings(): Settings? {
@@ -379,7 +379,23 @@ object LocalPreferences {
         }
     }
 
-    suspend fun loadCurrentAccountFromEncryptedStorage(npub: String?): Account? = withContext(Dispatchers.IO) {
+    val mutex = Mutex()
+    suspend fun loadCurrentAccountFromEncryptedStorage(npub: String): Account? = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            if (_cachedAccounts.containsKey(npub)) {
+                return@withContext _cachedAccounts.get(npub)
+            }
+
+            val account = innerLoadCurrentAccountFromEncryptedStorage(npub)
+            account?.registerObservers()
+
+            _cachedAccounts.put(npub, account)
+
+            return@withContext account
+        }
+    }
+
+    suspend fun innerLoadCurrentAccountFromEncryptedStorage(npub: String?): Account? = withContext(Dispatchers.IO) {
         checkNotInMainThread()
 
         return@withContext with(encryptedPreferences(npub)) {
@@ -387,9 +403,6 @@ object LocalPreferences {
             val loginWithExternalSigner = getBoolean(PrefKeys.LOGIN_WITH_EXTERNAL_SIGNER, false)
             val privKey = if (loginWithExternalSigner) null else getString(PrefKeys.NOSTR_PRIVKEY, null)
 
-            val followingChannels = getStringSet(PrefKeys.FOLLOWING_CHANNELS, null) ?: setOf()
-            val followingCommunities = getStringSet(PrefKeys.FOLLOWING_COMMUNITIES, null) ?: setOf()
-            val hiddenUsers = getStringSet(PrefKeys.HIDDEN_USERS, emptySet()) ?: setOf()
             val localRelays = getString(PrefKeys.RELAYS, "[]")?.let {
                 println("LocalRelays: $it")
                 Event.mapper.readValue<Set<RelaySetupInfo>?>(it)
@@ -485,7 +498,7 @@ object LocalPreferences {
                 NostrSignerInternal(keyPair)
             }
 
-            return@with Account(
+            val account = Account(
                 keyPair = keyPair,
                 signer = signer,
                 localRelays = localRelays,
@@ -512,6 +525,16 @@ object LocalPreferences {
                 filterSpamFromStrangers = filterSpam,
                 lastReadPerRoute = lastReadPerRoute
             )
+
+            // Loads from DB
+            account.userProfile()
+
+            withContext(Dispatchers.Main) {
+                // Loads Live Objects
+                account.userProfile().live()
+            }
+
+            return@with account
         }
     }
 }

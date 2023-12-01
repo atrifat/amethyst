@@ -28,7 +28,9 @@ import com.vitorpamplona.amethyst.service.NostrThreadDataSource
 import com.vitorpamplona.amethyst.service.NostrUserProfileDataSource
 import com.vitorpamplona.amethyst.service.NostrVideoDataSource
 import com.vitorpamplona.amethyst.service.relays.Client
+import com.vitorpamplona.quartz.encoders.bechToBytes
 import com.vitorpamplona.quartz.encoders.decodePublicKeyAsHexOrNull
+import com.vitorpamplona.quartz.encoders.toHexKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
@@ -72,10 +74,19 @@ class ServiceManager {
         }
 
         if (myAccount != null) {
-            Client.connect(myAccount.activeRelays() ?: myAccount.convertLocalRelays())
+            val relaySet = myAccount.activeRelays() ?: myAccount.convertLocalRelays()
+            Log.d("Relay", "Service Manager Connect Connecting ${relaySet.size}")
+            Client.reconnect(relaySet)
 
             // start services
             NostrAccountDataSource.account = myAccount
+            NostrAccountDataSource.otherAccounts = LocalPreferences.allSavedAccounts().mapNotNull {
+                try {
+                    it.npub.bechToBytes().toHexKey()
+                } catch (e: Exception) {
+                    null
+                }
+            }
             NostrHomeDataSource.account = myAccount
             NostrChatroomListDataSource.account = myAccount
             NostrVideoDataSource.account = myAccount
@@ -120,7 +131,7 @@ class ServiceManager {
         NostrUserProfileDataSource.stopSync()
         NostrVideoDataSource.stopSync()
 
-        Client.disconnect()
+        Client.reconnect(null)
         isStarted = false
     }
 

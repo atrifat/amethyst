@@ -19,7 +19,6 @@ import com.vitorpamplona.amethyst.service.relays.Client
 import com.vitorpamplona.amethyst.service.relays.Constants
 import com.vitorpamplona.amethyst.service.relays.FeedType
 import com.vitorpamplona.amethyst.service.relays.Relay
-import com.vitorpamplona.amethyst.service.relays.RelayPool
 import com.vitorpamplona.amethyst.ui.components.BundledUpdate
 import com.vitorpamplona.quartz.crypto.KeyPair
 import com.vitorpamplona.quartz.encoders.ATag
@@ -210,6 +209,8 @@ class Account(
                 }
                 result?.let {
                     emit(it)
+                } ?: run {
+                    emit(LiveFollowLists())
                 }
             }
         }.stateIn(scope, SharingStarted.Eagerly, LiveFollowLists())
@@ -241,6 +242,8 @@ class Account(
                 }
                 result?.let {
                     emit(it)
+                } ?: run {
+                    emit(LiveFollowLists())
                 }
             }
         }.stateIn(scope, SharingStarted.Eagerly, LiveFollowLists())
@@ -272,6 +275,8 @@ class Account(
                 }
                 result?.let {
                     emit(it)
+                } ?: run {
+                    emit(LiveFollowLists())
                 }
             }
         }.stateIn(scope, SharingStarted.Eagerly, LiveFollowLists())
@@ -303,6 +308,8 @@ class Account(
                 }
                 result?.let {
                     emit(it)
+                } ?: run {
+                    emit(LiveFollowLists())
                 }
             }
         }.stateIn(scope, SharingStarted.Eagerly, LiveFollowLists())
@@ -338,18 +345,22 @@ class Account(
         ) { localLive, blockList, muteList ->
             checkNotInMainThread()
 
-            val resultBlockList = withTimeoutOrNull(1000) {
-                suspendCancellableCoroutine { continuation ->
-                    (blockList.note.event as? PeopleListEvent)?.publicAndPrivateUsersAndWords(signer) {
-                        continuation.resume(it)
+            val resultBlockList = (blockList.note.event as? PeopleListEvent)?.let {
+                withTimeoutOrNull(1000) {
+                    suspendCancellableCoroutine { continuation ->
+                        it.publicAndPrivateUsersAndWords(signer) {
+                            continuation.resume(it)
+                        }
                     }
                 }
             } ?: PeopleListEvent.UsersAndWords()
 
-            val resultMuteList = withTimeoutOrNull(1000) {
-                suspendCancellableCoroutine { continuation ->
-                    (muteList.note.event as? MuteListEvent)?.publicAndPrivateUsersAndWords(signer) {
-                        continuation.resume(it)
+            val resultMuteList = (muteList.note.event as? MuteListEvent)?.let {
+                withTimeoutOrNull(1000) {
+                    suspendCancellableCoroutine { continuation ->
+                        it.publicAndPrivateUsersAndWords(signer) {
+                            continuation.resume(it)
+                        }
                     }
                 }
             } ?: PeopleListEvent.UsersAndWords()
@@ -1801,11 +1812,7 @@ class Account(
 
     fun reconnectIfRelaysHaveChanged() {
         val newRelaySet = activeRelays() ?: convertLocalRelays()
-        if (!Client.isSameRelaySetConfig(newRelaySet)) {
-            Client.disconnect()
-            Client.connect(newRelaySet)
-            RelayPool.requestAndWatch()
-        }
+        Client.reconnect(newRelaySet, true)
     }
 
     fun isAllHidden(users: Set<HexKey>): Boolean {

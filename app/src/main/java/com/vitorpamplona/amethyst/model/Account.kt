@@ -89,6 +89,7 @@ import com.vitorpamplona.quartz.events.PeopleListEvent
 import com.vitorpamplona.quartz.events.PollNoteEvent
 import com.vitorpamplona.quartz.events.Price
 import com.vitorpamplona.quartz.events.PrivateDmEvent
+import com.vitorpamplona.quartz.events.PrivateOutboxRelayListEvent
 import com.vitorpamplona.quartz.events.ReactionEvent
 import com.vitorpamplona.quartz.events.RelayAuthEvent
 import com.vitorpamplona.quartz.events.ReportEvent
@@ -176,6 +177,7 @@ class Account(
     val keyPair: KeyPair,
     val signer: NostrSigner = NostrSignerInternal(keyPair),
     var localRelays: Set<RelaySetupInfo> = Constants.defaultRelays.toSet(),
+    var localRelayServers: Set<String> = setOf(),
     var dontTranslateFrom: Set<String> = getLanguagesSpokenByUser(),
     var languagePreferences: Map<String, String> = mapOf(),
     var translateTo: String = Locale.getDefault().language,
@@ -232,16 +234,22 @@ class Account(
             getNIP65RelayListFlow(),
             getDMRelayListFlow(),
             getSearchRelayListFlow(),
+            getPrivateOutboxRelayListFlow(),
             userProfile().flow().relays.stateFlow,
-        ) { nip65RelayList, dmRelayList, searchRelayList, userProfile ->
+        ) { nip65RelayList, dmRelayList, searchRelayList, privateOutBox, userProfile ->
             val baseRelaySet = activeRelays() ?: convertLocalRelays()
             val newDMRelaySet = (dmRelayList.note.event as? ChatMessageRelayListEvent)?.relays()?.toSet() ?: emptySet()
             val searchRelaySet = (searchRelayList.note.event as? SearchRelayListEvent)?.relays()?.toSet() ?: Constants.defaultSearchRelaySet
             val nip65RelaySet = (nip65RelayList.note.event as? AdvertisedRelayListEvent)?.relays()
+            val privateOutboxRelaySet = (privateOutBox.note.event as? PrivateOutboxRelayListEvent)?.relays() ?: emptySet()
+
+            // ------
+            // DMs
+            // ------
 
             var mappedRelaySet =
                 baseRelaySet.map {
-                    if (newDMRelaySet.contains(it.url) == true) {
+                    if (newDMRelaySet.contains(it.url)) {
                         Relay(it.url, true, true, it.activeTypes + FeedType.PRIVATE_DMS)
                     } else {
                         it
@@ -249,45 +257,89 @@ class Account(
                 }
 
             newDMRelaySet.forEach { newUrl ->
-                if (mappedRelaySet.filter { it.url == newUrl }.isEmpty()) {
+                if (mappedRelaySet.none { it.url == newUrl }) {
                     mappedRelaySet = mappedRelaySet + Relay(newUrl, true, true, setOf(FeedType.PRIVATE_DMS))
                 }
             }
 
+            // ------
+            // SEARCH
+            // ------
+
             mappedRelaySet =
                 mappedRelaySet.map {
-                    if (searchRelaySet.contains(it.url) == true) {
-                        Relay(it.url, true, true, it.activeTypes + FeedType.PRIVATE_DMS)
+                    if (searchRelaySet.contains(it.url)) {
+                        Relay(it.url, true, it.write || false, it.activeTypes + FeedType.SEARCH)
                     } else {
                         it
                     }
                 }
 
             searchRelaySet.forEach { newUrl ->
-                if (mappedRelaySet.filter { it.url == newUrl }.isEmpty()) {
-                    mappedRelaySet = mappedRelaySet + Relay(newUrl, true, true, setOf(FeedType.SEARCH))
+                if (mappedRelaySet.none { it.url == newUrl }) {
+                    mappedRelaySet = mappedRelaySet + Relay(newUrl, true, false, setOf(FeedType.SEARCH))
                 }
             }
+
+            // --------------
+            // PRIVATE OUTBOX
+            // --------------
+
+            mappedRelaySet =
+                mappedRelaySet.map {
+                    if (privateOutboxRelaySet.contains(it.url)) {
+                        Relay(it.url, true, true, it.activeTypes + setOf(FeedType.FOLLOWS, FeedType.PUBLIC_CHATS, FeedType.GLOBAL, FeedType.PRIVATE_DMS))
+                    } else {
+                        it
+                    }
+                }
+
+            privateOutboxRelaySet.forEach { newUrl ->
+                if (mappedRelaySet.none { it.url == newUrl }) {
+                    mappedRelaySet = mappedRelaySet + Relay(newUrl, true, true, setOf(FeedType.FOLLOWS, FeedType.PUBLIC_CHATS, FeedType.GLOBAL, FeedType.PRIVATE_DMS))
+                }
+            }
+
+            // --------------
+            // PRIVATE OUTBOX
+            // --------------
+
+            mappedRelaySet =
+                mappedRelaySet.map {
+                    if (localRelayServers.contains(it.url)) {
+                        Relay(it.url, true, true, it.activeTypes + setOf(FeedType.FOLLOWS, FeedType.PUBLIC_CHATS, FeedType.GLOBAL, FeedType.PRIVATE_DMS))
+                    } else {
+                        it
+                    }
+                }
+
+            localRelayServers.forEach { newUrl ->
+                if (mappedRelaySet.none { it.url == newUrl }) {
+                    mappedRelaySet = mappedRelaySet + Relay(newUrl, true, true, setOf(FeedType.FOLLOWS, FeedType.PUBLIC_CHATS, FeedType.GLOBAL, FeedType.PRIVATE_DMS))
+                }
+            }
+
+            // --------------
+            // NIP-65 Public Inbox/Outbox
+            // --------------
 
             mappedRelaySet =
                 mappedRelaySet.map { relay ->
                     val nip65setup = nip65RelaySet?.firstOrNull { relay.url == it.relayUrl }
                     if (nip65setup != null) {
-                        val read = nip65setup.type == AdvertisedRelayListEvent.AdvertisedRelayType.BOTH || nip65setup.type == AdvertisedRelayListEvent.AdvertisedRelayType.READ
                         val write = nip65setup.type == AdvertisedRelayListEvent.AdvertisedRelayType.BOTH || nip65setup.type == AdvertisedRelayListEvent.AdvertisedRelayType.READ
 
-                        Relay(relay.url, read, write, relay.activeTypes + setOf(FeedType.FOLLOWS, FeedType.GLOBAL, FeedType.PUBLIC_CHATS))
+                        Relay(relay.url, true, relay.write || write, relay.activeTypes + setOf(FeedType.FOLLOWS, FeedType.GLOBAL, FeedType.PUBLIC_CHATS))
                     } else {
                         relay
                     }
                 }
 
             nip65RelaySet?.forEach { newNip65Setup ->
-                if (mappedRelaySet.filter { it.url == newNip65Setup.relayUrl }.isEmpty()) {
-                    val read = newNip65Setup.type == AdvertisedRelayListEvent.AdvertisedRelayType.BOTH || newNip65Setup.type == AdvertisedRelayListEvent.AdvertisedRelayType.READ
+                if (mappedRelaySet.none { it.url == newNip65Setup.relayUrl }) {
                     val write = newNip65Setup.type == AdvertisedRelayListEvent.AdvertisedRelayType.BOTH || newNip65Setup.type == AdvertisedRelayListEvent.AdvertisedRelayType.READ
 
-                    mappedRelaySet = mappedRelaySet + Relay(newNip65Setup.relayUrl, read, write, setOf(FeedType.FOLLOWS, FeedType.PUBLIC_CHATS))
+                    mappedRelaySet = mappedRelaySet + Relay(newNip65Setup.relayUrl, true, write, setOf(FeedType.FOLLOWS, FeedType.PUBLIC_CHATS))
                 }
             }
 
@@ -558,7 +610,7 @@ class Account(
         return keyPair.privKey != null || signer is NostrSignerExternal
     }
 
-    fun sendNewRelayList(relays: Map<String, ContactListEvent.ReadWrite>) {
+    fun sendKind3RelayList(relays: Map<String, ContactListEvent.ReadWrite>) {
         if (!isWriteable()) return
 
         val contactList = userProfile().latestContactList
@@ -729,8 +781,10 @@ class Account(
         note.event?.let { event ->
             LnZapRequestEvent.create(
                 event,
-                userProfile().latestContactList?.relays()?.keys?.ifEmpty { null }
-                    ?: localRelays.map { it.url }.toSet(),
+                relays =
+                    getNIP65RelayList()?.readRelays()?.toSet()
+                        ?: userProfile().latestContactList?.relays()?.keys?.ifEmpty { null }
+                        ?: localRelays.map { it.url }.toSet(),
                 signer,
                 pollOption,
                 message,
@@ -1398,7 +1452,12 @@ class Account(
                     deleteDraft(draftTag)
                 } else {
                     DraftEvent.create(draftTag, it, emptyList(), signer) { draftEvent ->
-                        Client.send(draftEvent, relayList = relayList)
+                        val newRelayList = getPrivateOutboxRelayList()?.relays()
+                        if (newRelayList != null) {
+                            Client.sendPrivately(draftEvent, newRelayList)
+                        } else {
+                            Client.send(draftEvent, relayList = relayList)
+                        }
                         LocalCache.justConsume(draftEvent, null)
                     }
                 }
@@ -1462,7 +1521,12 @@ class Account(
                     deleteDraft(draftTag)
                 } else {
                     DraftEvent.create(draftTag, it, signer) { draftEvent ->
-                        Client.send(draftEvent, relayList = relayList)
+                        val newRelayList = getPrivateOutboxRelayList()?.relays()
+                        if (newRelayList != null) {
+                            Client.sendPrivately(draftEvent, newRelayList)
+                        } else {
+                            Client.send(draftEvent, relayList = relayList)
+                        }
                         LocalCache.justConsume(draftEvent, null)
                     }
                 }
@@ -1488,15 +1552,15 @@ class Account(
 
     fun deleteDraft(draftTag: String) {
         val key = DraftEvent.createAddressTag(userProfile().pubkeyHex, draftTag)
-        LocalCache.getAddressableNoteIfExists(key)?.let {
-            val noteEvent = it.event
+        LocalCache.getAddressableNoteIfExists(key)?.let { note ->
+            val noteEvent = note.event
             if (noteEvent is DraftEvent) {
                 noteEvent.createDeletedEvent(signer) {
-                    Client.send(it)
+                    Client.sendPrivately(it, relayList = note.relays.map { it.url })
                     LocalCache.justConsume(it, null)
                 }
             }
-            delete(it)
+            delete(note)
         }
     }
 
@@ -1546,7 +1610,12 @@ class Account(
                     deleteDraft(draftTag)
                 } else {
                     DraftEvent.create(draftTag, it, signer) { draftEvent ->
-                        Client.send(draftEvent, relayList = relayList)
+                        val newRelayList = getPrivateOutboxRelayList()?.relays()
+                        if (newRelayList != null) {
+                            Client.sendPrivately(draftEvent, newRelayList)
+                        } else {
+                            Client.send(draftEvent, relayList = relayList)
+                        }
                         LocalCache.justConsume(draftEvent, null)
                     }
                 }
@@ -1639,7 +1708,12 @@ class Account(
                     deleteDraft(draftTag)
                 } else {
                     DraftEvent.create(draftTag, it, signer) { draftEvent ->
-                        Client.send(draftEvent, relayList = relayList)
+                        val newRelayList = getPrivateOutboxRelayList()?.relays()
+                        if (newRelayList != null) {
+                            Client.sendPrivately(draftEvent, newRelayList)
+                        } else {
+                            Client.send(draftEvent, relayList = relayList)
+                        }
                         LocalCache.justConsume(draftEvent, null)
                     }
                 }
@@ -1693,7 +1767,12 @@ class Account(
                     deleteDraft(draftTag)
                 } else {
                     DraftEvent.create(draftTag, it, signer) { draftEvent ->
-                        Client.send(draftEvent)
+                        val newRelayList = getPrivateOutboxRelayList()?.relays()
+                        if (newRelayList != null) {
+                            Client.sendPrivately(draftEvent, newRelayList)
+                        } else {
+                            Client.send(draftEvent)
+                        }
                         LocalCache.justConsume(draftEvent, null)
                     }
                 }
@@ -1740,7 +1819,12 @@ class Account(
                     deleteDraft(draftTag)
                 } else {
                     DraftEvent.create(draftTag, it, signer) { draftEvent ->
-                        Client.send(draftEvent)
+                        val newRelayList = getPrivateOutboxRelayList()?.relays()
+                        if (newRelayList != null) {
+                            Client.sendPrivately(draftEvent, newRelayList)
+                        } else {
+                            Client.send(draftEvent)
+                        }
                         LocalCache.justConsume(draftEvent, null)
                     }
                 }
@@ -1814,7 +1898,12 @@ class Account(
                     deleteDraft(draftTag)
                 } else {
                     DraftEvent.create(draftTag, it, emptyList(), signer) { draftEvent ->
-                        Client.send(draftEvent)
+                        val newRelayList = getPrivateOutboxRelayList()?.relays()
+                        if (newRelayList != null) {
+                            Client.sendPrivately(draftEvent, newRelayList)
+                        } else {
+                            Client.send(draftEvent)
+                        }
                         LocalCache.justConsume(draftEvent, null)
                     }
                 }
@@ -1862,7 +1951,12 @@ class Account(
                     deleteDraft(draftTag)
                 } else {
                     DraftEvent.create(draftTag, it.msg, emptyList(), signer) { draftEvent ->
-                        Client.send(draftEvent)
+                        val newRelayList = getPrivateOutboxRelayList()?.relays()
+                        if (newRelayList != null) {
+                            Client.sendPrivately(draftEvent, newRelayList)
+                        } else {
+                            Client.send(draftEvent)
+                        }
                         LocalCache.justConsume(draftEvent, null)
                     }
                 }
@@ -2161,27 +2255,12 @@ class Account(
         return LocalCache.getOrCreateAddressableNote(aTag)
     }
 
-    fun getFileServersNote(): AddressableNote {
-        val aTag =
-            ATag(
-                FileServersEvent.KIND,
-                userProfile().pubkeyHex,
-                "",
-                null,
-            )
-        return LocalCache.getOrCreateAddressableNote(aTag)
-    }
-
     fun getBlockList(): PeopleListEvent? {
         return getBlockListNote().event as? PeopleListEvent
     }
 
     fun getMuteList(): MuteListEvent? {
         return getMuteListNote().event as? MuteListEvent
-    }
-
-    fun getFileServersList(): FileServersEvent? {
-        return getFileServersNote().event as? FileServersEvent
     }
 
     fun hideWord(word: String) {
@@ -2458,6 +2537,12 @@ class Account(
         }
     }
 
+    fun updateLocalRelayServers(servers: Set<String>) {
+        localRelayServers = servers
+        liveLanguages.invalidateData()
+        saveable.invalidateData()
+    }
+
     fun addDontTranslateFrom(languageCode: String) {
         dontTranslateFrom = dontTranslateFrom.plus(languageCode)
         liveLanguages.invalidateData()
@@ -2521,18 +2606,14 @@ class Account(
     }
 
     fun activeGlobalRelays(): Array<String> {
-        return (activeRelays() ?: convertLocalRelays())
+        return connectToRelays.value
             .filter { it.activeTypes.contains(FeedType.GLOBAL) }
             .map { it.url }
             .toTypedArray()
     }
 
     fun activeWriteRelays(): List<Relay> {
-        return (activeRelays() ?: convertLocalRelays()).filter { it.write }
-    }
-
-    fun activeAllRelays(): List<Relay> {
-        return ((activeRelays() ?: convertLocalRelays()).toList())
+        return connectToRelays.value.filter { it.write }
     }
 
     fun isAllHidden(users: Set<HexKey>): Boolean {
@@ -2618,10 +2699,10 @@ class Account(
             .toSet()
     }
 
-    fun saveRelayList(value: List<RelaySetupInfo>) {
+    fun saveKind3RelayList(value: List<RelaySetupInfo>) {
         try {
             localRelays = value.toSet()
-            return sendNewRelayList(
+            return sendKind3RelayList(
                 value.associate { it.url to ContactListEvent.ReadWrite(it.read, it.write) },
             )
         } finally {
@@ -2646,11 +2727,7 @@ class Account(
     fun saveDMRelayList(dmRelays: List<String>) {
         if (!isWriteable()) return
 
-        val relayListForDMs =
-            LocalCache.getOrCreateAddressableNote(
-                ChatMessageRelayListEvent.createAddressATag(signer.pubKey),
-            ).event as? ChatMessageRelayListEvent
-
+        val relayListForDMs = getDMRelayList()
         if (relayListForDMs != null && relayListForDMs.tags.isNotEmpty()) {
             ChatMessageRelayListEvent.updateRelayList(
                 earlierVersion = relayListForDMs,
@@ -2663,6 +2740,45 @@ class Account(
         } else {
             ChatMessageRelayListEvent.createFromScratch(
                 relays = dmRelays,
+                signer = signer,
+            ) {
+                Client.send(it)
+                LocalCache.justConsume(it, null)
+            }
+        }
+    }
+
+    fun getPrivateOutboxRelayListNote(): AddressableNote {
+        return LocalCache.getOrCreateAddressableNote(
+            PrivateOutboxRelayListEvent.createAddressATag(signer.pubKey),
+        )
+    }
+
+    fun getPrivateOutboxRelayListFlow(): StateFlow<NoteState> {
+        return getPrivateOutboxRelayListNote().flow().metadata.stateFlow
+    }
+
+    fun getPrivateOutboxRelayList(): PrivateOutboxRelayListEvent? {
+        return getPrivateOutboxRelayListNote().event as? PrivateOutboxRelayListEvent
+    }
+
+    fun savePrivateOutboxRelayList(relays: List<String>) {
+        if (!isWriteable()) return
+
+        val relayListForPrivateOutbox = getPrivateOutboxRelayList()
+
+        if (relayListForPrivateOutbox != null && !relayListForPrivateOutbox.cachedPrivateTags().isNullOrEmpty()) {
+            PrivateOutboxRelayListEvent.updateRelayList(
+                earlierVersion = relayListForPrivateOutbox,
+                relays = relays,
+                signer = signer,
+            ) {
+                Client.send(it)
+                LocalCache.justConsume(it, null)
+            }
+        } else {
+            PrivateOutboxRelayListEvent.createFromScratch(
+                relays = relays,
                 signer = signer,
             ) {
                 Client.send(it)
@@ -2688,10 +2804,7 @@ class Account(
     fun saveSearchRelayList(searchRelays: List<String>) {
         if (!isWriteable()) return
 
-        val relayListForSearch =
-            LocalCache.getOrCreateAddressableNote(
-                SearchRelayListEvent.createAddressATag(signer.pubKey),
-            ).event as? SearchRelayListEvent
+        val relayListForSearch = getSearchRelayList()
 
         if (relayListForSearch != null && relayListForSearch.tags.isNotEmpty()) {
             SearchRelayListEvent.updateRelayList(
@@ -2730,10 +2843,7 @@ class Account(
     fun sendNip65RelayList(relays: List<AdvertisedRelayListEvent.AdvertisedRelayInfo>) {
         if (!isWriteable()) return
 
-        val nip65RelayList =
-            LocalCache.getOrCreateAddressableNote(
-                AdvertisedRelayListEvent.createAddressATag(signer.pubKey),
-            ).event as? AdvertisedRelayListEvent
+        val nip65RelayList = getNIP65RelayList()
 
         if (nip65RelayList != null) {
             AdvertisedRelayListEvent.updateRelayList(
@@ -2747,6 +2857,43 @@ class Account(
         } else {
             AdvertisedRelayListEvent.createFromScratch(
                 relays = relays,
+                signer = signer,
+            ) {
+                Client.send(it)
+                LocalCache.justConsume(it, null)
+            }
+        }
+    }
+
+    fun getFileServersList(): FileServersEvent? {
+        return getFileServersNote().event as? FileServersEvent
+    }
+
+    fun getFileServersListFlow(): StateFlow<NoteState> {
+        return getFileServersNote().flow().metadata.stateFlow
+    }
+
+    fun getFileServersNote(): AddressableNote {
+        return LocalCache.getOrCreateAddressableNote(FileServersEvent.createAddressATag(userProfile().pubkeyHex))
+    }
+
+    fun sendFileServersList(servers: List<String>) {
+        if (!isWriteable()) return
+
+        val serverList = getFileServersList()
+
+        if (serverList != null && serverList.tags.isNotEmpty()) {
+            FileServersEvent.updateRelayList(
+                earlierVersion = serverList,
+                relays = servers,
+                signer = signer,
+            ) {
+                Client.send(it)
+                LocalCache.justConsume(it, null)
+            }
+        } else {
+            FileServersEvent.createFromScratch(
+                relays = servers,
                 signer = signer,
             ) {
                 Client.send(it)

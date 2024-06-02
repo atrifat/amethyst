@@ -20,12 +20,12 @@
  */
 package com.vitorpamplona.amethyst.ui.actions.relays
 
-class DMRelayListViewModel : BasicRelaySetupInfoModel() {
+class PrivateOutboxRelayListViewModel : BasicRelaySetupInfoModel() {
     override fun getRelayList(): List<String>? {
-        return account.getDMRelayList()?.relays()
+        return account.getPrivateOutboxRelayList()?.relays()
     }
 
     override fun saveRelayList(urlList: List<String>) {
-        account.saveDMRelayList(urlList)
+        account.savePrivateOutboxRelayList(urlList)
     }
 }

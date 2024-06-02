@@ -45,6 +45,7 @@ import com.vitorpamplona.quartz.events.DraftEvent
 import com.vitorpamplona.quartz.events.EmojiPackSelectionEvent
 import com.vitorpamplona.quartz.events.Event
 import com.vitorpamplona.quartz.events.EventInterface
+import com.vitorpamplona.quartz.events.FileServersEvent
 import com.vitorpamplona.quartz.events.GenericRepostEvent
 import com.vitorpamplona.quartz.events.GiftWrapEvent
 import com.vitorpamplona.quartz.events.GitIssueEvent
@@ -57,6 +58,7 @@ import com.vitorpamplona.quartz.events.MetadataEvent
 import com.vitorpamplona.quartz.events.MuteListEvent
 import com.vitorpamplona.quartz.events.PeopleListEvent
 import com.vitorpamplona.quartz.events.PollNoteEvent
+import com.vitorpamplona.quartz.events.PrivateOutboxRelayListEvent
 import com.vitorpamplona.quartz.events.ReactionEvent
 import com.vitorpamplona.quartz.events.ReportEvent
 import com.vitorpamplona.quartz.events.RepostEvent
@@ -103,7 +105,7 @@ object NostrAccountDataSource : NostrDataSource("AccountData") {
             types = COMMON_FEED_TYPES,
             filter =
                 JsonFilter(
-                    kinds = listOf(StatusEvent.KIND, AdvertisedRelayListEvent.KIND, ChatMessageRelayListEvent.KIND, SearchRelayListEvent.KIND),
+                    kinds = listOf(StatusEvent.KIND, AdvertisedRelayListEvent.KIND, ChatMessageRelayListEvent.KIND, SearchRelayListEvent.KIND, PrivateOutboxRelayListEvent.KIND),
                     authors = listOf(account.userProfile().pubkeyHex),
                     limit = 10,
                 ),
@@ -122,7 +124,9 @@ object NostrAccountDataSource : NostrDataSource("AccountData") {
                             ContactListEvent.KIND,
                             AdvertisedRelayListEvent.KIND,
                             ChatMessageRelayListEvent.KIND,
+                            PrivateOutboxRelayListEvent.KIND,
                             SearchRelayListEvent.KIND,
+                            FileServersEvent.KIND,
                             MuteListEvent.KIND,
                             PeopleListEvent.KIND,
                         ),
@@ -177,8 +181,7 @@ object NostrAccountDataSource : NostrDataSource("AccountData") {
                 ?.followList
                 ?.get(account.defaultNotificationFollowList.value)
                 ?.relayList
-                ?: account.activeRelays()?.associate { it.url to EOSETime(TimeUtils.oneWeekAgo()) }
-                ?: account.convertLocalRelays().associate { it.url to EOSETime(TimeUtils.oneWeekAgo()) }
+                ?: account.connectToRelays.value.associate { it.url to EOSETime(TimeUtils.oneWeekAgo()) }
 
         return TypedFilter(
             types = COMMON_FEED_TYPES,
@@ -210,7 +213,7 @@ object NostrAccountDataSource : NostrDataSource("AccountData") {
                 ?.followList
                 ?.get(account.defaultNotificationFollowList.value)
                 ?.relayList
-                ?: account.activeRelays()?.associate { it.url to EOSETime(TimeUtils.oneWeekAgo()) }
+                ?: account.connectToRelays.value.associate { it.url to EOSETime(TimeUtils.oneWeekAgo()) }
                 ?: account.convertLocalRelays().associate { it.url to EOSETime(TimeUtils.oneWeekAgo()) }
 
         return TypedFilter(
@@ -283,6 +286,16 @@ object NostrAccountDataSource : NostrDataSource("AccountData") {
 
         if (LocalCache.justVerify(event)) {
             when (event) {
+                is PrivateOutboxRelayListEvent -> {
+                    val note = LocalCache.getAddressableNoteIfExists(event.addressTag())
+                    val noteEvent = note?.event
+                    if (noteEvent == null || event.createdAt > noteEvent.createdAt()) {
+                        event.privateTags(account.signer) {
+                            LocalCache.justConsume(event, relay)
+                        }
+                    }
+                }
+
                 is DraftEvent -> {
                     // Avoid decrypting over and over again if the event already exist.
 

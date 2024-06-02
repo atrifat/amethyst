@@ -18,14 +18,39 @@
  * AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package com.vitorpamplona.amethyst.ui.actions.relays
+package com.vitorpamplona.amethyst.benchmark
 
-class DMRelayListViewModel : BasicRelaySetupInfoModel() {
-    override fun getRelayList(): List<String>? {
-        return account.getDMRelayList()?.relays()
+import androidx.benchmark.junit4.BenchmarkRule
+import androidx.benchmark.junit4.measureRepeated
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.vitorpamplona.amethyst.commons.preview.BlurHashDecoder
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class BlurhashBenchmark {
+    @get:Rule
+    val benchmarkRule = BenchmarkRule()
+
+    val warmHex = "[45#Y7_2^-xt%OSb%4S0-qt0xbotaRInV|M{RlD~M{M_IVIUNHM{M{M{M{RjNGRkoyj]o[t8tPt8"
+    val testHex = "|NHL-]~pabocs+jDM{j?of4T9ZR+WBWZbdR-WCog04ITn\$t6t6t6t6oJoLZ}?bIUWBs:M{WCogRjs:s+o#R+WBoft7axWBx]IV%LogM{t5xaWBay%KRjxus.WCNGWWt7j[j]s+R-S5ofjYV@j[ofD%t8RPoJt7t7R*WCof"
+
+    @Test
+    fun testAspectRatio() {
+        BlurHashDecoder.aspectRatio(warmHex)
+
+        benchmarkRule.measureRepeated {
+            BlurHashDecoder.aspectRatio(testHex)
+        }
     }
 
-    override fun saveRelayList(urlList: List<String>) {
-        account.saveDMRelayList(urlList)
+    @Test
+    fun testDecoder() {
+        BlurHashDecoder.decodeKeepAspectRatio(warmHex, 50)
+
+        benchmarkRule.measureRepeated {
+            BlurHashDecoder.decodeKeepAspectRatio(testHex, 50)
+        }
     }
 }

@@ -28,9 +28,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -51,8 +51,10 @@ import com.vitorpamplona.amethyst.service.relays.Constants
 import com.vitorpamplona.amethyst.ui.actions.CloseButton
 import com.vitorpamplona.amethyst.ui.actions.SaveButton
 import com.vitorpamplona.amethyst.ui.screen.loggedIn.AccountViewModel
-import com.vitorpamplona.amethyst.ui.theme.DoubleHorzSpacer
 import com.vitorpamplona.amethyst.ui.theme.FeedPadding
+import com.vitorpamplona.amethyst.ui.theme.MinHorzSpacer
+import com.vitorpamplona.amethyst.ui.theme.RowColSpacing
+import com.vitorpamplona.amethyst.ui.theme.StdHorzSpacer
 import com.vitorpamplona.amethyst.ui.theme.grayText
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,14 +75,22 @@ fun AllRelayListView(
     val homeFeedState by nip65ViewModel.homeRelays.collectAsStateWithLifecycle()
     val notifFeedState by nip65ViewModel.notificationRelays.collectAsStateWithLifecycle()
 
+    val privateOutboxViewModel: PrivateOutboxRelayListViewModel = viewModel()
+    val privateOutboxFeedState by privateOutboxViewModel.relays.collectAsStateWithLifecycle()
+
     val searchViewModel: SearchRelayListViewModel = viewModel()
     val searchFeedState by searchViewModel.relays.collectAsStateWithLifecycle()
+
+    val localViewModel: LocalRelayListViewModel = viewModel()
+    val localFeedState by localViewModel.relays.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         kind3ViewModel.load(accountViewModel.account)
         dmViewModel.load(accountViewModel.account)
         nip65ViewModel.load(accountViewModel.account)
         searchViewModel.load(accountViewModel.account)
+        localViewModel.load(accountViewModel.account)
+        privateOutboxViewModel.load(accountViewModel.account)
     }
 
     Dialog(
@@ -93,15 +103,24 @@ fun AllRelayListView(
                     title = {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
+                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            Spacer(modifier = MinHorzSpacer)
+
+                            Text(
+                                text = stringResource(R.string.relay_settings),
+                                style = MaterialTheme.typography.titleLarge,
+                            )
+
                             SaveButton(
                                 onPost = {
                                     kind3ViewModel.create()
                                     dmViewModel.create()
                                     nip65ViewModel.create()
                                     searchViewModel.create()
+                                    localViewModel.create()
+                                    privateOutboxViewModel.create()
                                     onClose()
                                 },
                                 true,
@@ -109,13 +128,20 @@ fun AllRelayListView(
                         }
                     },
                     navigationIcon = {
-                        Spacer(modifier = DoubleHorzSpacer)
-                        CloseButton(
-                            onPress = {
-                                kind3ViewModel.clear()
-                                onClose()
-                            },
-                        )
+                        Row {
+                            Spacer(modifier = StdHorzSpacer)
+                            CloseButton(
+                                onPress = {
+                                    kind3ViewModel.clear()
+                                    dmViewModel.clear()
+                                    nip65ViewModel.clear()
+                                    searchViewModel.clear()
+                                    localViewModel.clear()
+                                    privateOutboxViewModel.clear()
+                                    onClose()
+                                },
+                            )
+                        }
                     },
                     colors =
                         TopAppBarDefaults.topAppBarColors(
@@ -163,6 +189,14 @@ fun AllRelayListView(
                     renderDMItems(dmFeedState, dmViewModel, accountViewModel, onClose, nav)
 
                     item {
+                        SettingsCategory(
+                            stringResource(R.string.private_outbox_section),
+                            stringResource(R.string.private_outbox_section_explainer),
+                        )
+                    }
+                    renderPrivateOutboxItems(privateOutboxFeedState, privateOutboxViewModel, accountViewModel, onClose, nav)
+
+                    item {
                         SettingsCategoryWithButton(
                             stringResource(R.string.search_section),
                             stringResource(R.string.search_section_explainer),
@@ -172,6 +206,14 @@ fun AllRelayListView(
                         )
                     }
                     renderSearchItems(searchFeedState, searchViewModel, accountViewModel, onClose, nav)
+
+                    item {
+                        SettingsCategory(
+                            stringResource(R.string.local_section),
+                            stringResource(R.string.local_section_explainer),
+                        )
+                    }
+                    renderLocalItems(localFeedState, localViewModel, accountViewModel, onClose, nav)
 
                     item {
                         SettingsCategoryWithButton(
@@ -191,7 +233,7 @@ fun AllRelayListView(
 
 @Composable
 fun ResetKind3Relays(postViewModel: Kind3RelayListViewModel) {
-    Button(
+    OutlinedButton(
         onClick = {
             postViewModel.deleteAll()
             Constants.defaultRelays.forEach { postViewModel.addRelay(it) }
@@ -204,7 +246,7 @@ fun ResetKind3Relays(postViewModel: Kind3RelayListViewModel) {
 
 @Composable
 fun ResetSearchRelays(postViewModel: SearchRelayListViewModel) {
-    Button(
+    OutlinedButton(
         onClick = {
             postViewModel.deleteAll()
             Constants.defaultSearchRelaySet.forEach { postViewModel.addRelay(BasicRelaySetupInfo(it)) }
@@ -244,7 +286,7 @@ fun SettingsCategoryWithButton(
     action: @Composable () -> Unit,
     modifier: Modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
 ) {
-    Row(modifier) {
+    Row(modifier, horizontalArrangement = RowColSpacing) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,

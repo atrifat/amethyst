@@ -27,7 +27,7 @@ import com.vitorpamplona.amethyst.model.RelaySetupInfo
 import com.vitorpamplona.amethyst.service.Nip11CachedRetriever
 import com.vitorpamplona.amethyst.service.relays.Constants
 import com.vitorpamplona.amethyst.service.relays.FeedType
-import com.vitorpamplona.amethyst.service.relays.RelayPool
+import com.vitorpamplona.amethyst.service.relays.RelayStats
 import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,7 +38,7 @@ import kotlinx.coroutines.launch
 class Kind3RelayListViewModel : ViewModel() {
     private lateinit var account: Account
 
-    private val _relays = MutableStateFlow<List<RelaySetupInfo>>(emptyList())
+    private val _relays = MutableStateFlow<List<Kind3BasicRelaySetupInfo>>(emptyList())
     val relays = _relays.asStateFlow()
 
     var hasModified = false
@@ -52,7 +52,16 @@ class Kind3RelayListViewModel : ViewModel() {
     fun create() {
         if (hasModified) {
             viewModelScope.launch(Dispatchers.IO) {
-                account.saveKind3RelayList(relays.value)
+                account.saveKind3RelayList(
+                    relays.value.map {
+                        RelaySetupInfo(
+                            it.url,
+                            it.read,
+                            it.write,
+                            it.feedTypes,
+                        )
+                    },
+                )
                 clear()
             }
         }
@@ -80,7 +89,6 @@ class Kind3RelayListViewModel : ViewModel() {
             if (relayFile != null) {
                 relayFile
                     .map {
-                        val liveRelay = RelayPool.getRelay(it.key)
                         val localInfoFeedTypes =
                             account.localRelays
                                 .filter { localRelay -> localRelay.url == it.key }
@@ -92,54 +100,55 @@ class Kind3RelayListViewModel : ViewModel() {
                                     ?.feedTypes
                                 ?: FeedType.values().toSet().toImmutableSet()
 
-                        val errorCounter = liveRelay?.errorCounter ?: 0
-                        val eventDownloadCounter = liveRelay?.eventDownloadCounterInBytes ?: 0
-                        val eventUploadCounter = liveRelay?.eventUploadCounterInBytes ?: 0
-                        val spamCounter = liveRelay?.spamCounter ?: 0
-
-                        RelaySetupInfo(
-                            it.key,
-                            it.value.read,
-                            it.value.write,
-                            errorCounter,
-                            eventDownloadCounter,
-                            eventUploadCounter,
-                            spamCounter,
-                            localInfoFeedTypes,
+                        Kind3BasicRelaySetupInfo(
+                            url = it.key,
+                            read = it.value.read,
+                            write = it.value.write,
+                            feedTypes = localInfoFeedTypes,
+                            relayStat = RelayStats.get(it.key),
                         )
                     }
                     .distinctBy { it.url }
-                    .sortedBy { it.downloadCountInBytes }
+                    .sortedBy { it.relayStat.receivedBytes }
                     .reversed()
             } else {
                 account.localRelays
                     .map {
-                        val liveRelay = RelayPool.getRelay(it.url)
-
-                        val errorCounter = liveRelay?.errorCounter ?: 0
-                        val eventDownloadCounter = liveRelay?.eventDownloadCounterInBytes ?: 0
-                        val eventUploadCounter = liveRelay?.eventUploadCounterInBytes ?: 0
-                        val spamCounter = liveRelay?.spamCounter ?: 0
-
-                        RelaySetupInfo(
-                            it.url,
-                            it.read,
-                            it.write,
-                            errorCounter,
-                            eventDownloadCounter,
-                            eventUploadCounter,
-                            spamCounter,
-                            it.feedTypes,
+                        Kind3BasicRelaySetupInfo(
+                            url = it.url,
+                            read = it.read,
+                            write = it.write,
+                            feedTypes = it.feedTypes,
+                            relayStat = RelayStats.get(it.url),
                         )
                     }
                     .distinctBy { it.url }
-                    .sortedBy { it.downloadCountInBytes }
+                    .sortedBy { it.relayStat.receivedBytes }
                     .reversed()
             }
         }
     }
 
-    fun addRelay(relay: RelaySetupInfo) {
+    fun addAll(defaultRelays: Array<RelaySetupInfo>) {
+        hasModified = true
+
+        _relays.update {
+            defaultRelays.map {
+                Kind3BasicRelaySetupInfo(
+                    url = it.url,
+                    read = it.read,
+                    write = it.write,
+                    feedTypes = it.feedTypes,
+                    relayStat = RelayStats.get(it.url),
+                )
+            }
+                .distinctBy { it.url }
+                .sortedBy { it.relayStat.receivedBytes }
+                .reversed()
+        }
+    }
+
+    fun addRelay(relay: Kind3BasicRelaySetupInfo) {
         if (relays.value.any { it.url == relay.url }) return
 
         _relays.update { it.plus(relay) }
@@ -147,7 +156,7 @@ class Kind3RelayListViewModel : ViewModel() {
         hasModified = true
     }
 
-    fun deleteRelay(relay: RelaySetupInfo) {
+    fun deleteRelay(relay: Kind3BasicRelaySetupInfo) {
         _relays.update { it.minus(relay) }
         hasModified = true
     }
@@ -157,48 +166,48 @@ class Kind3RelayListViewModel : ViewModel() {
         hasModified = true
     }
 
-    fun toggleDownload(relay: RelaySetupInfo) {
+    fun toggleDownload(relay: Kind3BasicRelaySetupInfo) {
         _relays.update { it.updated(relay, relay.copy(read = !relay.read)) }
         hasModified = true
     }
 
-    fun toggleUpload(relay: RelaySetupInfo) {
+    fun toggleUpload(relay: Kind3BasicRelaySetupInfo) {
         _relays.update { it.updated(relay, relay.copy(write = !relay.write)) }
         hasModified = true
     }
 
-    fun toggleFollows(relay: RelaySetupInfo) {
+    fun toggleFollows(relay: Kind3BasicRelaySetupInfo) {
         val newTypes = togglePresenceInSet(relay.feedTypes, FeedType.FOLLOWS)
         _relays.update { it.updated(relay, relay.copy(feedTypes = newTypes)) }
         hasModified = true
     }
 
-    fun toggleMessages(relay: RelaySetupInfo) {
+    fun toggleMessages(relay: Kind3BasicRelaySetupInfo) {
         val newTypes = togglePresenceInSet(relay.feedTypes, FeedType.PRIVATE_DMS)
         _relays.update { it.updated(relay, relay.copy(feedTypes = newTypes)) }
         hasModified = true
     }
 
-    fun togglePublicChats(relay: RelaySetupInfo) {
+    fun togglePublicChats(relay: Kind3BasicRelaySetupInfo) {
         val newTypes = togglePresenceInSet(relay.feedTypes, FeedType.PUBLIC_CHATS)
         _relays.update { it.updated(relay, relay.copy(feedTypes = newTypes)) }
         hasModified = true
     }
 
-    fun toggleGlobal(relay: RelaySetupInfo) {
+    fun toggleGlobal(relay: Kind3BasicRelaySetupInfo) {
         val newTypes = togglePresenceInSet(relay.feedTypes, FeedType.GLOBAL)
         _relays.update { it.updated(relay, relay.copy(feedTypes = newTypes)) }
         hasModified = true
     }
 
-    fun toggleSearch(relay: RelaySetupInfo) {
+    fun toggleSearch(relay: Kind3BasicRelaySetupInfo) {
         val newTypes = togglePresenceInSet(relay.feedTypes, FeedType.SEARCH)
         _relays.update { it.updated(relay, relay.copy(feedTypes = newTypes)) }
         hasModified = true
     }
 
     fun togglePaidRelay(
-        relay: RelaySetupInfo,
+        relay: Kind3BasicRelaySetupInfo,
         paid: Boolean,
     ) {
         _relays.update { it.updated(relay, relay.copy(paidRelay = paid)) }

@@ -22,14 +22,25 @@ package com.vitorpamplona.amethyst.ui.actions.relays
 
 import androidx.compose.runtime.Immutable
 import com.vitorpamplona.amethyst.model.RelayBriefInfoCache
+import com.vitorpamplona.amethyst.service.relays.FeedType
+import com.vitorpamplona.amethyst.service.relays.RelayStat
 
 @Immutable
 data class BasicRelaySetupInfo(
     val url: String,
-    val errorCount: Int = 0,
-    val downloadCountInBytes: Int = 0,
-    val uploadCountInBytes: Int = 0,
-    val spamCount: Int = 0,
+    val relayStat: RelayStat,
+    val paidRelay: Boolean = false,
+) {
+    val briefInfo: RelayBriefInfoCache.RelayBriefInfo = RelayBriefInfoCache.RelayBriefInfo(url)
+}
+
+@Immutable
+data class Kind3BasicRelaySetupInfo(
+    val url: String,
+    val read: Boolean,
+    val write: Boolean,
+    val feedTypes: Set<FeedType>,
+    val relayStat: RelayStat,
     val paidRelay: Boolean = false,
 ) {
     val briefInfo: RelayBriefInfoCache.RelayBriefInfo = RelayBriefInfoCache.RelayBriefInfo(url)

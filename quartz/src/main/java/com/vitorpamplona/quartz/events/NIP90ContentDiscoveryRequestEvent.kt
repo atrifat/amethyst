@@ -38,9 +38,12 @@ class NIP90ContentDiscoveryRequestEvent(
 ) : Event(id, pubKey, createdAt, KIND, tags, content, sig) {
     companion object {
         const val KIND = 5300
+        const val ALT = "NIP90 Content Discovery request"
 
         fun create(
-            dvmPublicKey: String,
+            dvmPublicKey: HexKey,
+            forUser: HexKey,
+            relays: Set<String>,
             signer: NostrSigner,
             createdAt: Long = TimeUtils.now(),
             onReady: (NIP90ContentDiscoveryRequestEvent) -> Unit,
@@ -48,8 +51,10 @@ class NIP90ContentDiscoveryRequestEvent(
             val content = ""
             val tags = mutableListOf<Array<String>>()
             tags.add(arrayOf("p", dvmPublicKey))
-            tags.add(arrayOf("alt", "NIP90 Content Discovery request"))
-            tags.add(arrayOf("client", "Amethyst"))
+            tags.add(arrayOf("alt", ALT))
+            tags.add(arrayOf("relays") + relays.toTypedArray())
+            tags.add(arrayOf("param", "max_results", "200"))
+            tags.add(arrayOf("param", "user", forUser))
             signer.sign(createdAt, KIND, tags.toTypedArray(), content, onReady)
         }
     }

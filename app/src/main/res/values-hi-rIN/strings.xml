@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <string name="point_to_the_qr_code">क्यूआर क्रमचित्र के अभिमुख करें</string>
-    <string name="show_qr">क्यूआर क्रमचित्र दिखाएँ</string>
+    <string name="point_to_the_qr_code">क्यूआर॰ क्रमचित्र के अभिमुख करें</string>
+    <string name="show_qr">क्यूआर॰ क्रमचित्र दिखाएँ</string>
     <string name="profile_image">परिचय चित्र</string>
     <string name="your_profile_image">आपका परिचय चित्र</string>
-    <string name="scan_qr">क्यूआर क्रमचित्र को परखें</string>
+    <string name="scan_qr">क्यूआर॰ क्रमचित्र को परखें</string>
     <string name="show_anyway">फिर भी दिखाएँ</string>
     <string name="post_was_hidden">इस प्रकाशित पत्र को छिपाया गया क्योंकि इसमें आपके आच्छाद्य उपयोगकर्ता अथवा शब्द उल्लेखित हैं</string>
     <string name="post_was_flagged_as_inappropriate_by">प्रकाशित पत्र को मौन किया गया अथवा सूचित किया गया इनके द्वारा</string>
-    <string name="post_not_found">घटना पुष्ट किया जा रहा है अथवा आपके पुनःप्रसारक सूची में से प्राप्त नहीं</string>
+    <string name="post_not_found">घटना उपलब्ध किया जा रहा है अथवा आपके पुनःप्रसारक सूची में से प्राप्त नहीं</string>
     <string name="channel_image">प्रणाली चित्र</string>
     <string name="referenced_event_not_found">उद्धृत घटना अप्राप्त</string>
     <string name="could_not_decrypt_the_message">सन्देश का अरहस्यीकरण असफल</string>
@@ -48,7 +48,7 @@
     <string name="zaps">ज्साप</string>
     <string name="view_count">दृष्ट संख्या</string>
     <string name="boost">उद्धृत करें</string>
-    <string name="boosted">उद्धृत किया गया</string>
+    <string name="boosted">उद्धृत</string>
     <string name="edited">सम्पादित</string>
     <string name="edited_number">सम्पादन #%1$s</string>
     <string name="original">मूल</string>
@@ -63,7 +63,7 @@
     <string name="profile_banner">परिचय पृष्ठ चौडाचित्र</string>
     <string name="payment_successful">भुगतान सफल</string>
     <string name="error_parsing_error_message">अपक्रम संदेश परखने में अपक्रम</string>
-    <string name="following">" अनुचरण चालू"</string>
+    <string name="following">" का अनुचरण"</string>
     <string name="followers">" अनुचर"</string>
     <string name="profile">परिचय</string>
     <string name="security_filters">सुरक्षा छलनियाँ</string>
@@ -86,12 +86,12 @@
     <string name="about_us">"हमारा परिचय.. "</string>
     <string name="what_s_on_your_mind">आपके मन में क्या है?</string>
     <string name="post">पत्र प्रकाशन</string>
-    <string name="save">अभिलेखित करें</string>
+    <string name="save">अभिलेखन करें</string>
     <string name="create">बनाएँ</string>
     <string name="cancel">निरस्त करें</string>
     <string name="failed_to_upload_the_image">चित्र आरोहण असफल</string>
     <string name="relay_address">पुनःप्रसारक पता</string>
-    <string name="posts">पत्र</string>
+    <string name="posts">प्रकाशित पत्र</string>
     <string name="bytes">अष्टक</string>
     <string name="errors">अपक्रम</string>
     <string name="errors_description">संयोजन अपक्रमों की संख्या इस सत्र में</string>
@@ -104,7 +104,7 @@
     <string name="display_name">प्रदर्शन नाम</string>
     <string name="my_display_name">मेरा प्रदर्शन नाम</string>
     <string name="my_awesome_name">उष्ट्रपक्षी मक्बढिया</string>
-    <string name="welcome">स्वागतम उष्ट्रपक्षी</string>
+    <string name="welcome">स्वागतम उष्ट्रपक्षी!</string>
     <string name="username">उपयोगकर्ता नाम</string>
     <string name="my_username">मेरा उपयोगकर्ता नाम</string>
     <string name="about_me">मेरा परिचय</string>
@@ -113,8 +113,8 @@
     <string name="website_url">जालस्थान पता</string>
     <string name="ln_address">लै॰जाल पता</string>
     <string name="ln_url_outdated">लै॰जाल पता (पुराना)</string>
-    <string name="image_saved_to_the_gallery">चित्र को चित्रालय क्रमक में रख दिया गया</string>
-    <string name="failed_to_save_the_image">चित्र को रखने में असफल</string>
+    <string name="image_saved_to_the_gallery">चित्र का अभिलेखन किया गया चित्रालय क्रमक में</string>
+    <string name="failed_to_save_the_image">चित्र का अभिलेखन असफल</string>
     <string name="upload_image">चित्र आरोहण</string>
     <string name="uploading">आरोहण चल रहा है…</string>
     <string name="user_does_not_have_a_lightning_address_setup_to_receive_sats">उपयोगकर्ता का कोई लैटनिंग पता स्थापित नहीं जिसपर साट्स प्राप्त कर सके</string>
@@ -127,19 +127,19 @@
     <string name="new_requests">नये अनुरोध</string>
     <string name="blocked_users">बाधित उपयोगकर्ता</string>
     <string name="new_threads">नये सूत्र</string>
-    <string name="conversations">संवाद</string>
+    <string name="conversations">सम्वाद</string>
     <string name="notes">टीकाएँ</string>
-    <string name="replies">उत्तरें</string>
-    <string name="follows">"का अनुचरण करते हैं"</string>
+    <string name="replies">प्रतिवचन</string>
+    <string name="follows">"का अनुचरण"</string>
     <string name="reports">"सूचनाएँ"</string>
     <string name="more_options">अधिक विकल्प</string>
     <string name="relays">" पुनःप्रसारक"</string>
     <string name="website">जालस्थान</string>
     <string name="lightning_address">लैटनिंग पता</string>
-    <string name="copies_the_nsec_id_your_password_to_the_clipboard_for_backup">NSEC विभेदक (आपका गुप्त पारणशब्द) का अनुकरण करता है टाँकाफलक में सुरक्षित रखने के लिए</string>
+    <string name="copies_the_nsec_id_your_password_to_the_clipboard_for_backup">एनसेक॰ विभेदक (आपका गुप्त पारणशब्द) की अनुकृति करता है टाँकाफलक में सुरक्षित रखने के लिए</string>
     <string name="copy_private_key_to_the_clipboard">गुप्त कुंचिका की अनुकृति करें टाँकाफलक में</string>
     <string name="copies_the_public_key_to_the_clipboard_for_sharing">ख्याप्य कुंचिका की अनुकृति करता है टाँकाफलक में बाँटने के लिए</string>
-    <string name="copy_public_key_npub_to_the_clipboard">ख्याप्य कुंचिका (NPub) का अनुकरण करें टाँकाफलक में</string>
+    <string name="copy_public_key_npub_to_the_clipboard">ख्याप्य कुंचिका (एनपुब॰) की अनुकृति करें टाँकाफलक में</string>
     <string name="send_a_direct_message">सीधा संदेश भेजें</string>
     <string name="edits_the_user_s_metadata">उपयोगकर्ता के उपतथ्य का सम्पादन करता है</string>
     <string name="follow">अनुचरण करें</string>
@@ -147,10 +147,10 @@
     <string name="unblock">बाधा हटाएँ</string>
     <string name="copy_user_id">उपयोगकर्ता विभेदक की अनुकृति करें</string>
     <string name="unblock_user">उपयोगकर्ता बाधा हटाएँ</string>
-    <string name="npub_hex_username">"npub, उपयोगकर्ता नाम, लेख"</string>
+    <string name="npub_hex_username">"एनपुब॰, उपयोगकर्ता नाम, लेख"</string>
     <string name="clear">रिक्त करें</string>
     <string name="app_logo">क्रमक चिह्न</string>
-    <string name="nsec_npub_hex_private_key">nsec.. अथवा npub..</string>
+    <string name="nsec_npub_hex_private_key">एनसेक॰.. अथवा एनपुब॰..</string>
     <string name="ncryptsec_password">कुंचिका को खोलने के लिए पारणशब्द</string>
     <string name="show_password">पारणशब्द दिखाएँ</string>
     <string name="hide_password">पारणशब्द छिपाएँ</string>
@@ -170,9 +170,9 @@
     <string name="already_have_an_account">क्या नोस्ट्र लेखा पहले से है?</string>
     <string name="create_a_new_account">नया लेखा बनाएँ</string>
     <string name="generate_a_new_key">नयी कुंचिका बनाएँ</string>
-    <string name="loading_feed">सूचनावली प्राप्त किया जा रहा है</string>
-    <string name="loading_account">लेखा प्राप्त किया जा रहा है</string>
-    <string name="error_loading_replies">"उत्तरों को प्राप्त करने में अपक्रम "</string>
+    <string name="loading_feed">सूचनावली प्राप्त की जा रही है</string>
+    <string name="loading_account">लेखा जानकारी प्राप्त की जा रही है</string>
+    <string name="error_loading_replies">"प्रतिवचनों को प्राप्त करने में अपक्रम : "</string>
     <string name="try_again">पुनः प्रयास करें</string>
     <string name="feed_is_empty">सूचनावली रिक्त है।</string>
     <string name="refresh">नवीकरण</string>
@@ -185,7 +185,7 @@
     <string name="leave">निर्गमन</string>
     <string name="unfollow">अनुचरण ना करें</string>
     <string name="channel_created">प्रणाली बनायी गयी</string>
-    <string name="channel_information_changed_to">"प्रणाली सूचना बना दिया किया गया इसे"</string>
+    <string name="channel_information_changed_to">"प्रणाली जानकारी परिवर्तित की गयी"</string>
     <string name="public_chat">सार्वजनिक चर्चा</string>
     <string name="posts_received">पत्र प्राप्त</string>
     <string name="remove">हटाएँ</string>
@@ -198,9 +198,9 @@
     <string name="nip_05">नोस्ट्र पता</string>
     <string name="never">कभी नहीं</string>
     <string name="now">अभी</string>
-    <string name="h">ह</string>
-    <string name="m">म</string>
-    <string name="d">द</string>
+    <string name="h"> घं॰</string>
+    <string name="m"> मि॰</string>
+    <string name="d"> दि॰</string>
     <string name="nudity">नग्नता</string>
     <string name="profanity_hateful_speech">अपशब्द / द्वेषपूर्ण भाषण</string>
     <string name="report_hateful_speech">द्वेषपूर्ण भाषण की सूचना दें</string>
@@ -208,10 +208,10 @@
     <string name="others">अन्य</string>
     <string name="mark_all_known_as_read">सब ज्ञात को पढ लिया चिह्नित करें</string>
     <string name="mark_all_new_as_read">सब नये को पढ लिया चिह्नित करें</string>
-    <string name="mark_all_as_read">सब पढ लिया चिह्नित करें</string>
+    <string name="mark_all_as_read">सब को पढ लिया चिह्नित करें</string>
     <string name="backup_keys">कुंचिकाएँ सुरक्षित रखें</string>
     <string name="account_backup_tips2_md" tools:ignore="Typos">## कुंचिका सुरक्षार्थ अनुकृति तथा सुरक्षा सुझाव
-        \n\nआपकी लेखा एक गुप्त कुंचिका से सुरक्षित किया गया है। कुंचिका अक्षरों की एक लम्बी श्रृंखला है जो **nsec1** से आरम्भ होता है। जिस किसी के पास यह कुंचिका है वह पत्र प्रकाशन कर सकेगा तथा आपका परिचय परिवर्तित कर सकेगा।
+        \n\nआपकी लेखा एक गुप्त कुंचिका से सुरक्षित किया गया है। कुंचिका अक्षरों की एक लम्बी श्रृंखला है जो **nsec1** से आरम्भ होता है। जिस किसी के पास यह कुंचिका है वह पत्र प्रकाशित कर सकेगा तथा आपका परिचय परिवर्तित कर सकेगा।
         \n\n- आपकी गुप्त कुंचिका किसी भी जालस्थान अथवा क्रमक में **ना** डालें जिसपर आपका विश्वास ना हो।
         \n- अमेथिस्ट क्रमलेख विकासकर्ता आपकी गुप्त कुंचिका **कभी नहीं** पूछेंगे।
         \n- आपकी गुप्त कुंचिका की एक सुरक्षित अनुकृति **अवश्य** रखें अपनी लेखा पुनः प्राप्त करने के लिए। पारणशब्ध प्रबंधन क्रमक की पुनः प्रशंसा करते हैं।
@@ -220,7 +220,7 @@
         \n\n यदि आप अपना पारणशब्द खो देते हैं, तो आप अपनी कुंचिका को पुनः प्राप्त नहीं कर सकते।
     </string>
     <string name="failed_to_encrypt_key">आपकी निजी कुंचिका का रहस्यीकरण असफल</string>
-    <string name="secret_key_copied_to_clipboard">गुप्त कुंचिका (nsec) का अनुकरण टाँकाफलक में डाला गया।</string>
+    <string name="secret_key_copied_to_clipboard">गुप्त कुंचिका (एनसेक॰) की अनुकृति टाँकाफलक में किया गया।</string>
     <string name="copy_my_secret_key">मेरी गुप्त कुंचिका की अनुकृति करें</string>
     <string name="encrypt_and_copy_my_secret_key">मेरी गुप्त कुंचिका का रहस्यीकरण तथा अनुकृति करें</string>
     <string name="biometric_authentication_failed">प्रमाणीकरण असफल</string>
@@ -277,21 +277,21 @@
     <string name="report_dialog_post_report_btn">सूचना प्रकाशित करें</string>
     <string name="report_dialog_title">बाधित करें तथा सूचना दें</string>
     <string name="block_only">बाधित करें</string>
-    <string name="bookmarks">स्मारकचिह्न</string>
+    <string name="bookmarks">स्मर्तव्य</string>
     <string name="drafts">पाण्डुलिपियाँ</string>
-    <string name="private_bookmarks">निजी स्मारकचिह्नित वस्तु</string>
-    <string name="public_bookmarks">सार्वजनिक स्मारकचिह्नित वस्तु</string>
-    <string name="add_to_private_bookmarks">निजी स्मारकचिह्नित वस्तु सूची में जोडें</string>
-    <string name="add_to_public_bookmarks">सार्वजनिक स्मारकचिह्नित वस्तु सूची में जोडें</string>
-    <string name="remove_from_private_bookmarks">निजी स्मारकचिह्नित वस्तु सूची से हटाएँ</string>
-    <string name="remove_from_public_bookmarks">सार्वजनिक स्मारकचिह्नित वस्तु सूची से हटाएँ</string>
+    <string name="private_bookmarks">निजी स्मर्तव्य</string>
+    <string name="public_bookmarks">सार्वजनिक स्मर्तव्य</string>
+    <string name="add_to_private_bookmarks">निजी स्मर्तव्य सूची में जोडें</string>
+    <string name="add_to_public_bookmarks">सार्वजनिक स्मर्तव्य सूची में जोडें</string>
+    <string name="remove_from_private_bookmarks">निजी स्मर्तव्य सूची से हटाएँ</string>
+    <string name="remove_from_public_bookmarks">सार्वजनिक स्मर्तव्य सूची से हटाएँ</string>
     <string name="wallet_connect_service">धनकोष संयोजन सेवा</string>
     <string name="wallet_connect_service_explainer">एक नोस्ट्र रहस्य को अधिकृत करता है ज्साप भुगतान करने के लिए क्रमक से बाहर चले बिना। रहस्य को सुरक्षित रखें तथा एक निजी पुनःप्रसारक का प्रयोग करें हो सके तो।</string>
     <string name="wallet_connect_service_pubkey">धनकोष संयोजन ख्याप्यकुंचिका</string>
     <string name="wallet_connect_service_relay">धनकोष संयोजन पुनःप्रसारक</string>
     <string name="wallet_connect_service_secret">धनकोष संयोजन रहस्य</string>
     <string name="wallet_connect_service_show_secret">गुप्त कुंचिका दिखाएँ</string>
-    <string name="wallet_connect_service_secret_placeholder">nsec / षोडशांकरूप निजी कुंचिका</string>
+    <string name="wallet_connect_service_secret_placeholder">एनसेक॰ / षोडशांकरूप निजी कुंचिका</string>
     <string name="pledge_amount_in_sats">प्रतिज्ञा मात्रा साट्स में</string>
     <string name="post_poll">मतदान प्रकाशित करें</string>
     <string name="poll_heading_required">अनिवार्य प्रपत्रस्थान :</string>
@@ -338,8 +338,8 @@
     <string name="zap_type_nonzap_explainer">नोस्ट्र में कोई पदचिह्न नहीं, केवल लैटनिंग पर</string>
     <string name="file_server">अभिलेख सेवासंगणक</string>
     <string name="zap_forward_lnAddress">लै॰जाल पता अथवा @उपयोगकर्ता</string>
-    <string name="upload_server_relays_nip95">आपके पुनःप्रसारक (NIP-95)</string>
-    <string name="upload_server_relays_nip95_explainer">अभिलेख आपके पुनःप्रसारक द्वारा रखे जाते हैं। नया NIP: जाँच करें यदि वे सक्षम हैं</string>
+    <string name="upload_server_relays_nip95">आपके पुनःप्रसारक (निप॰-९५)</string>
+    <string name="upload_server_relays_nip95_explainer">अभिलेख आपके पुनःप्रसारक द्वारा रखे जाते हैं। नया निप॰: जाँच करें यदि वे अवलम्बन करते हैं</string>
     <string name="connect_via_tor_short">टोर / ओर्बोट स्थापन</string>
     <string name="connect_via_tor">आपकी ओर्बोट स्थापना द्वारा संयोजन करें</string>
     <string name="do_you_really_want_to_disable_tor_title">क्या आपके ओर्बोट / टोर से संयोजन काट दें</string>
@@ -347,16 +347,16 @@
     <string name="yes">हाँ</string>
     <string name="no">नहीं</string>
     <string name="follow_list_selection">अनुचरण सूची</string>
-    <string name="follow_list_kind3follows">सभी अनुचरण</string>
+    <string name="follow_list_kind3follows">सभी अनुचरित</string>
     <string name="follow_list_global">वैश्विक</string>
     <string name="follow_list_mute_list">मौन सूची</string>
     <string name="connect_through_your_orbot_setup_markdown">## टोर द्वारा संयोजन करें ओर्बोट के साथ
         \n\n१. स्थापित करें [ओर्बोट](https://play.google.com/store/apps/details?id=org.torproject.android)
-        \n२. ओर्बोट आरम्भ करें
+        \n२. ओर्बोट चलाएँ
         \n३. ओर्बोट में, सोक्स॰ द्वार का जाँच करें। मूलविकल्पतः ९०५० का प्रयोग करता है।
         \n४. यदि आवश्यक हो तो ओर्बोट में द्वार परिवर्तित करें
         \n५. सोक्स॰ द्वार की समाकृति करें इस पटल पर
-        \n६. सक्रिय करें घुण्डी दबाएँ ओर्बोट को मध्यस्थ के रूप में प्रयोग करने के लिए
+        \n६. सक्रिय करें सूचकयुक्त घुण्डी दबाएँ ओर्बोट को प्रतिनिधि के रूप में प्रयोग करने के लिए
     </string>
     <string name="orbot_socks_port">ओर्बोट सोक्स॰ द्वार</string>
     <string name="invalid_port_number">द्वार अंक अमान्य</string>
@@ -372,7 +372,7 @@
     <string name="reply_notify">सूचित करें : </string>
     <string name="channel_list_join_conversation">संवाद में जुड जाएँ</string>
     <string name="channel_list_user_or_group_id">उपयोगकर्ता अथवा झुण्ड विभेदक</string>
-    <string name="channel_list_user_or_group_id_demo">npub, nevent अथवा षोडशांकरूप</string>
+    <string name="channel_list_user_or_group_id_demo">एनपुब॰, एनइवेण्ट॰ अथवा षोडशांकरूप</string>
     <string name="channel_list_create_channel">बनाएँ</string>
     <string name="channel_list_join_channel">जुडें</string>
     <string name="today">आज</string>
@@ -383,7 +383,7 @@
     <string name="content_warning_see_warnings">विषयवस्तु चेतावनियाँ सर्वदा दिखाएँ</string>
     <string name="recommended_apps">पुनःप्रशंसित : </string>
     <string name="filter_spam_from_strangers">अपरिचित जन के भेजे गये कचरालेखों को छलनी द्वारा हटाएँ</string>
-    <string name="warn_when_posts_have_reports_from_your_follows">चेतावनी दें जब पत्र सूचित किये गये हों आपके अनुचरों द्वारा</string>
+    <string name="warn_when_posts_have_reports_from_your_follows">चेतावनी दें जब पत्र सूचित किये गये हों आपके द्वारा अनुचरित व्यक्तियों से</string>
     <string name="new_reaction_symbol">नया प्रतिक्रिया चिह्न</string>
     <string name="no_reaction_type_setup_long_press_to_change">इस उपयोगकर्ता के लिए कोई प्रतिक्रिया प्रकार पूर्व चयनित नहीं। हृदयचिह्न घुण्डी पर दीर्घतः दबाएँ परिवर्तन करने के लिए</string>
     <string name="zapraiser">ज्सापोपार्जन योजना</string>
@@ -399,7 +399,7 @@
     <string name="version">संस्करण</string>
     <string name="software">क्रमक</string>
     <string name="contact">सम्पर्क</string>
-    <string name="supports">सक्षम NIPs</string>
+    <string name="supports">अवलम्बन किए हुए निप॰ सूची</string>
     <string name="admission_fees">प्रवेश शुल्क</string>
     <string name="payments_url">भुगतान जालपता</string>
     <string name="limitations">परिसीमाएँ</string>
@@ -414,13 +414,13 @@
     <string name="minimum_prefix">न्यूनतम उपसर्ग</string>
     <string name="maximum_event_tags">अधिकतम घटना विषयसूचक</string>
     <string name="content_length">विषयवस्तु लम्बाई</string>
-    <string name="minimum_pow">न्यूनतम PoW</string>
+    <string name="minimum_pow">न्यूनतम श्रमप्रमाण</string>
     <string name="auth">प्रमाणीकरण</string>
     <string name="payment">भुगतान</string>
-    <string name="cashu">काश्यु लिपिखण्ड</string>
+    <string name="cashu">काशयु लिपिखण्ड</string>
     <string name="cashu_redeem">चुकाएँ</string>
     <string name="cashu_redeem_to_zap">ज्साप धनकोष को भेजें</string>
-    <string name="cashu_redeem_to_cashu">काश्यु धनकोष में खोलें</string>
+    <string name="cashu_redeem_to_cashu">काशयु धनकोष में खोलें</string>
     <string name="cashu_copy_token">लिपिखण्ड की अनुकृति करें</string>
     <string name="no_lightning_address_set">कोई लैटनिंग पता स्थापित नहीं</string>
     <string name="copied_token_to_clipboard">लिपिखण्ड की अनुकृति की गयी टाँकाफलक में</string>
@@ -445,9 +445,9 @@
     <string name="add_sensitive_content_description">इसे दिखाने से पूर्व संवेदनशील विषयवस्तु चेतावनी जोडता है</string>
     <string name="settings">स्थापना विकल्प</string>
     <string name="connectivity_type_always">सर्वदा</string>
-    <string name="connectivity_type_wifi_only">केवल वैफै</string>
+    <string name="connectivity_type_wifi_only">केवल वै॰फै॰</string>
     <string name="connectivity_type_never">कभी नहीं</string>
-    <string name="ui_feature_set_type_complete">सम्पन्न</string>
+    <string name="ui_feature_set_type_complete">सम्पूर्ण</string>
     <string name="ui_feature_set_type_simplified">सरलीकृत</string>
     <string name="system">यन्त्रव्यवस्था</string>
     <string name="light">प्रकाशवान</string>
@@ -458,17 +458,17 @@
     <string name="automatically_load_images_gifs">चित्र पूर्वीक्षण</string>
     <string name="automatically_play_videos">चलचित्र का चालन</string>
     <string name="automatically_show_url_preview">जालपता पूर्वीक्षण</string>
-    <string name="automatically_hide_nav_bars">निमग्न पृष्ठघुमाव</string>
+    <string name="automatically_hide_nav_bars">निमग्नकारी पृष्ठघुमाव</string>
     <string name="automatically_hide_nav_bars_description">मार्गदर्शनपट्टियों को छिपाएँ पृष्ठघुमाव करने पर</string>
     <string name="ui_style">प्रयोगमाध्यम शैली</string>
     <string name="ui_style_description">पत्र प्रकाशन शैली का चयन करें</string>
     <string name="load_image">चित्र प्राप्त करें</string>
     <string name="spamming_users">कचरालेख प्रेषक</string>
-    <string name="muted_button">मौन किया गया। सुनने के लिए टाँकें</string>
+    <string name="muted_button">मौन किया गया। अमौन करने के लिए टाँकें</string>
     <string name="mute_button">ध्वनि सक्रिय। मौन करने के लिए टाँकें</string>
     <string name="search_button">स्थानीय तथा दूरस्थ अभिलेखों को खोजें</string>
     <string name="nip05_verified">नोस्ट्र पता का सत्यापन सफल</string>
-    <string name="nip05_failed">नोस्ट्र पता का सत्यातन असफल</string>
+    <string name="nip05_failed">नोस्ट्र पता का सत्यापन असफल</string>
     <string name="nip05_checking">नोस्ट्र पता का जाँच चल रहा है</string>
     <string name="select_deselect_all">सब का चयन / अचयन करें</string>
     <string name="default_relays">मूलविकल्प</string>
@@ -479,7 +479,7 @@
     <string name="geohash_explainer">आपका भूगोलिक स्थान विभेदक जोडता है पत्र में। जनता जान जाएगी कि आप वर्तमान स्थान से ५ कि॰मे॰ (३ मी॰) की दूरी के अन्दर हैं</string>
     <string name="add_sensitive_content_explainer">आपके विषयवस्तु दिखाने से पूर्व संवेदनशील विषयवस्तु चेतावनी जोडता है। यह आदर्श है किसी कार्यालय अनुचित विषयवस्तु के लिए अथवा जो कुछ लोगों के लिए आपत्तिजनक अथवा व्याकुल करनेवाला लग सकता है</string>
     <string name="new_feature_nip17_might_not_be_available_title">नयी सुविधा</string>
-    <string name="new_feature_nip17_might_not_be_available_description">इस कार्यशैली सक्षम करने के लिए अमेथिस्ट के द्वारा NIP-17 संदेश (उपहारकोषयुक्त, आच्छादित सीधा तथा झुण्ड संदेश) भेजना पडेगा। यह NIP-17 नया है तथा अनेक ग्राहक इसे कार्यान्वित किया नहीं अब तक। सुनिश्चित करें कि प्राप्तकर्ता एक अनुकूल ग्राहक का प्रयोग कर रहे हैं।</string>
+    <string name="new_feature_nip17_might_not_be_available_description">इस कार्यशैली सक्षम करने के लिए अमेथिस्ट के द्वारा निप॰-१७ संदेश (उपहारकोषयुक्त, आच्छादित सीधा तथा झुण्ड संदेश) भेजना पडेगा। यह निप॰-१७ नया है तथा अनेक ग्राहक इसे कार्यान्वित किया नहीं अब तक। सुनिश्चित करें कि प्राप्तकर्ता एक अनुकूल ग्राहक का प्रयोग कर रहे हैं।</string>
     <string name="new_feature_nip17_activate">सक्रिय करें</string>
     <string name="messages_create_public_chat">सार्वजनिक</string>
     <string name="messages_create_public_private_chat_desription">नया निजी अथवा सार्वजनिक झुण्ड</string>
@@ -494,12 +494,12 @@
     <string name="paste_from_clipboard">टाँकाफलक से चिपकाएँ</string>
     <string name="language_description">क्रमक के प्रयोगमाध्यम के लिए</string>
     <string name="theme_description">अन्धकारमय, प्रकाशवान अथवा यन्त्रव्यवस्थित प्रदर्शनशैली</string>
-    <string name="automatically_load_images_gifs_description">स्वचालित रूप से चित्र तथा GIFs का अवरोहण करें</string>
-    <string name="automatically_play_videos_description">स्वचालित रूप से चलचित्र तथा GIFs चलाता है</string>
+    <string name="automatically_load_images_gifs_description">स्वचालित रूप से चित्र तथा जिफ॰ का अवरोहण करें</string>
+    <string name="automatically_play_videos_description">स्वचालित रूप से चलचित्र तथा जिफ॰ चलाता है</string>
     <string name="automatically_show_url_preview_description">जालपता के पूर्वीक्षण दिखाएँ</string>
     <string name="load_image_description">चित्रों का अवरोहण कब करें</string>
     <string name="copy_to_clipboard">टाँकाफलक में अनुकृति करें</string>
-    <string name="copy_npub_to_clipboard">टाँकाफलक में npub का अनुकरण करें</string>
+    <string name="copy_npub_to_clipboard">टाँकाफलक में एनपुब॰ की अनुकृति करें</string>
     <string name="copy_url_to_clipboard">टाँकाफलक में जालपता की अनुकृति करें</string>
     <string name="copy_the_note_id_to_the_clipboard">टाँकाफलक में टीका विभेदक की अनुकृति करें</string>
     <string name="created_at">तब बनाया गया</string>
@@ -548,14 +548,14 @@
     <string name="error_dialog_pay_invoice_error">चालान का भुगतान नहीं कर पाए</string>
     <string name="error_dialog_pay_withdraw_error">निकाल नहीं पाए</string>
     <string name="error_parsing_nip47_title">धनकोष संयोजन स्थापित नहीं कर पाए</string>
-    <string name="error_parsing_nip47">NIP-47 संयोजन सूत्र परखने में अपक्रम। जाँच करें यदि यह सम्यक है अपने धनकोष सेवा प्रदाता के साथ : %1$s। अपक्रम : %2$s</string>
-    <string name="error_parsing_nip47_no_error">NIP-47 संयोजन सूत्र परखने में अपक्रम। जाँच करें यदि यह सम्यक है अपने धनकोष सेवा प्रदाता के साथ : %1$s।</string>
-    <string name="cashu_failed_redemption">काश्यु नहीं चुका पाए</string>
+    <string name="error_parsing_nip47">निप॰-४७ संयोजन सूत्र परखने में अपक्रम। जाँच करें यदि यह सम्यक है अपने धनकोष सेवा प्रदाता के साथ : %1$s। अपक्रम : %2$s</string>
+    <string name="error_parsing_nip47_no_error">निप॰-४७ संयोजन सूत्र परखने में अपक्रम। जाँच करें यदि यह सम्यक है अपने धनकोष सेवा प्रदाता के साथ : %1$s।</string>
+    <string name="cashu_failed_redemption">काशयु नहीं चुका पाए</string>
     <string name="cashu_failed_redemption_explainer_error_msg">टकसाल ने यह अपक्रम संदेश उपलब्ध किया : %1$s</string>
-    <string name="cashu_failed_redemption_explainer_already_spent">काश्यु लिपिखण्ड का व्यय हो चुका।</string>
-    <string name="cashu_successful_redemption">काश्यु प्राप्त</string>
+    <string name="cashu_failed_redemption_explainer_already_spent">काशयु लिपिखण्ड का व्यय हो चुका।</string>
+    <string name="cashu_successful_redemption">काशयु प्राप्त</string>
     <string name="cashu_successful_redemption_explainer">%1$s साट्स भेजे गये आपके धनकोष में। (शुल्क : %2$s साट्स)</string>
-    <string name="cashu_no_wallet_found">कोई अनुकूल काश्यु धनकोष उपलब्ध नहीं यन्त्र में</string>
+    <string name="cashu_no_wallet_found">कोई अनुकूल काशयु धनकोष उपलब्ध नहीं यन्त्र में</string>
     <string name="error_unable_to_fetch_invoice">ग्राहक के सेवा संगणक से चालान नहीं लाया जा सका</string>
     <string name="wallet_connect_pay_invoice_error_error">आपका धनकोष संयोजन प्रदाता ने यह अपक्रम लौटाया : %1$s</string>
     <string name="could_not_connect_to_tor">टोर से जुड नहीं पाए</string>
@@ -565,17 +565,17 @@
     <string name="could_not_resolve_check_if_you_are_connected_if_the_server_is_up_and_if_the_lightning_address_is_correct">%1$s का सुलझाव नहीं कर पाए। जाँच करें यदि आप संयोजित हैं, यदि सेवा संगणक चल रहा है तथा यदि लैटनिंग पता %2$s सम्यक है</string>
     <string name="could_not_resolve_check_if_you_are_connected_if_the_server_is_up_and_if_the_lightning_address_is_correct_exception">%1$s का सुलझाव नहीं कर पाए। जाँच करें यदि आप संयोजित हैं, यदि सेवा संगणक चल रहा है तथा यदि लैटनिंग पता %2$s सम्यक है।\n\nअपवर्ग था : %3$s</string>
     <string name="could_not_fetch_invoice_from">%1$s से चालान नहीं लाया जा सका</string>
-    <string name="error_parsing_json_from_lightning_address_check_the_user_s_lightning_setup">लैटनिंग पता से JSON परखनें में अपक्रम। उपयोगकर्ता की लैटनिंग स्थापना की जाँच करें</string>
-    <string name="error_parsing_json_from_lightning_address_check_the_user_s_lightning_setup_with_user">%1$s से JSON परखनें में अपक्रम। उपयोगकर्ता की लैटनिंग स्थापना की जाँच करें</string>
+    <string name="error_parsing_json_from_lightning_address_check_the_user_s_lightning_setup">लैटनिंग पता से जेसोन॰ परखनें में अपक्रम। उपयोगकर्ता की लैटनिंग स्थापना की जाँच करें</string>
+    <string name="error_parsing_json_from_lightning_address_check_the_user_s_lightning_setup_with_user">%1$s से जेसोन॰ परखनें में अपक्रम। उपयोगकर्ता की लैटनिंग स्थापना की जाँच करें</string>
     <string name="callback_url_not_found_in_the_user_s_lightning_address_server_configuration">प्रत्याह्वान जालपता उपलब्ध नहीं उपयोगकर्ता के लैटनिंग पता सेवासंगणक की समाकृति में</string>
     <string name="callback_url_not_found_in_the_user_s_lightning_address_server_configuration_with_user">प्रत्याह्वान जालपता उपलब्ध नहीं %1$s के उत्तर से</string>
-    <string name="error_parsing_json_from_lightning_address_s_invoice_fetch_check_the_user_s_lightning_setup">लैटनिंग पता के चालान लाने के JSON परखनें में अपक्रम। उपयोगकर्ता की लैटनिंग स्थापना की जाँच करें</string>
-    <string name="error_parsing_json_from_lightning_address_s_invoice_fetch_check_the_user_s_lightning_setup_with_user">%1$s के चालान लाने के JSON परखनें में अपक्रम। उपयोगकर्ता की लैटनिंग स्थापना की जाँच करें</string>
+    <string name="error_parsing_json_from_lightning_address_s_invoice_fetch_check_the_user_s_lightning_setup">लैटनिंग पता से लाये गये चालान के जेसोन॰ परखनें में अपक्रम। उपयोगकर्ता की लैटनिंग स्थापना की जाँच करें</string>
+    <string name="error_parsing_json_from_lightning_address_s_invoice_fetch_check_the_user_s_lightning_setup_with_user">%1$s से लाए गए चालान के जेसोन॰ परखनें में अपक्रम। उपयोगकर्ता की लैटनिंग स्थापना की जाँच करें</string>
     <string name="incorrect_invoice_amount_sats_from_it_should_have_been">%2$s से चालान की मात्रा (%1$s साट्स) में दोष है। %3$s होना चाहिए था।</string>
     <string name="unable_to_create_a_lightning_invoice_before_sending_the_zap_the_receiver_s_lightning_wallet_sent_the_following_error">ज्साप भेजने से पहले लैटनिंग चालान नहीं बना पाए। ग्राहक के लैटनिंग धनकोष ने यह अपक्रम की सूचना दी : %1$s</string>
     <string name="unable_to_create_a_lightning_invoice_before_sending_the_zap_the_receiver_s_lightning_wallet_sent_the_following_error_with_user">लैटनिंग चालान नहीं बना पाए। %1$s से संदेश : %2$s</string>
-    <string name="unable_to_create_a_lightning_invoice_before_sending_the_zap_element_pr_not_found_in_the_resulting_json">ज्साप भेजने से पहले लैटनिंग चालान नहीं बना पाए। परिणाम JSON में pr अम्श उपलब्ध नहीं।</string>
-    <string name="unable_to_create_a_lightning_invoice_before_sending_the_zap_element_pr_not_found_in_the_resulting_json_with_user">%1$s से लैटनिंग चालान नहीं बना पाए। परिणाम JSON में pr अम्श उपलब्ध नहीं।</string>
+    <string name="unable_to_create_a_lightning_invoice_before_sending_the_zap_element_pr_not_found_in_the_resulting_json">ज्साप भेजने से पहले लैटनिंग चालान नहीं बना पाए। परिणाम जेसोन॰ में pr अम्श उपलब्ध नहीं।</string>
+    <string name="unable_to_create_a_lightning_invoice_before_sending_the_zap_element_pr_not_found_in_the_resulting_json_with_user">%1$s से लैटनिंग चालान नहीं बना पाए। परिणाम जेसोन॰ में pr अम्श उपलब्ध नहीं।</string>
     <string name="read_only_user">केवल पढनेवाला उपयोगकर्ता</string>
     <string name="no_reactions_setup">कोई प्रतिक्रियाएँ स्थापित नहीं</string>
     <string name="select_push_server">संयुक्तप्रेषण क्रमक का चयन करें</string>
@@ -585,7 +585,7 @@
     <string name="push_server_none_explainer">प्रेषित सूचनाएँ अक्षम करता है</string>
     <string name="push_server_uses_app_explainer">%1$s क्रमक का प्रयोग करता है</string>
     <string name="push_server_install_app">प्रेषित सूचना स्थापन</string>
-    <string name="push_server_install_app_description">        प्रेषित सूचनाएँ प्राप्त करने के लिए, किसी भी क्रमक की स्थापना करें जो [संयुक्त प्रेषण](https://unifiedpush.org/) का अवलम्बन करता है, जैसे [Nfty](https://ntfy.sh/)।
+    <string name="push_server_install_app_description">        प्रेषित सूचनाएँ प्राप्त करने के लिए, किसी भी क्रमक की स्थापना करें जो [संयुक्त प्रेषण](https://unifiedpush.org/) का अवलम्बन करता है, जैसे [एनटीफै](https://ntfy.sh/)।
         स्थापना पश्चात, जिस क्रमक का उपयोग करना चाहते हैं उसका चयन करें स्थापना विकल्पों में।
     </string>
     <string name="payment_required_title">%1$s से संदेश</string>
@@ -634,7 +634,7 @@
     <string name="could_not_download_from_the_server">सेवासंगणक से आरोहणकृत चित्र चलचित्र का अवरोहण नहीं कर पाए</string>
     <string name="could_not_prepare_local_file_to_upload">स्थानीय अभिलेख अनुकूल नहीं बना सके आरोहण के लिए : %1$s</string>
     <string name="edit_draft">पाण्डुलिपि का सम्पादन करें</string>
-    <string name="login_with_qr_code">क्यूआर क्रमचित्र के साथ प्रवेशांकन करें</string>
+    <string name="login_with_qr_code">क्यूआर॰ क्रमचित्र के साथ प्रवेशांकन करें</string>
     <string name="route">मार्ग</string>
     <string name="route_home">घर</string>
     <string name="route_search">खोज</string>
@@ -671,26 +671,38 @@
     <string name="cancel_zap_split">ज्साप विभाजन निरस्त करें</string>
     <string name="add_content_warning">विषयवस्तु चेतावनी जोडें</string>
     <string name="remove_content_warning">विषयवस्तु चेतावनी हटाएँ</string>
-    <string name="show_npub_as_a_qr_code">क्यूआर क्रमचित्र के रूप में npub को दिखाएँ</string>
+    <string name="show_npub_as_a_qr_code">क्यूआर॰ क्रमचित्र के रूप में एनपुब॰ को दिखाएँ</string>
     <string name="invalid_nip19_uri">अमान्य पता</string>
     <string name="invalid_nip19_uri_description">अमेथिस्ट को एक वैश्विक वस्तु विभेदक प्राप्त हुआ खोलने के लिए परन्तु वह विभेदक अमान्य था : %1$s</string>
     <string name="dm_relays_title">सी॰सं॰ आगतपेटिका पुनःप्रसारक</string>
     <string name="dm_relays_through">पुनःप्रसारक : %1$s</string>
     <string name="dm_relays_regular">साधारण पुनःप्रसारक प्रयुक्त</string>
     <string name="dm_relays_not_found">आपके निजी आगतपेटिका पुनःप्रसारकों की स्थापना करें</string>
+    <string name="dm_relays_not_found_description">यह स्थापना विकल्प सब को सूचित करता है आपको सन्देश भेजने के लिए कौनसे पुनःप्रसारकों का प्रयोग करना चाहिए। इनके बिना आप कुछ सन्देश प्राप्त नहीं कर पाएँगे।</string>
+    <string name="dm_relays_not_found_examples">ये अच्छे विकल्प हैं :\n - inbox.nostr.wine (सशुल्क)\n - you.nostr1.com (निजी पुनःप्रसारक - सशुल्क)</string>
+    <string name="dm_relays_not_found_editing">निजी आगतपेटिका के रूप में १ - ३ पुनःप्रसारकों को जोडें। सी॰सं॰ आगतपेटिका पुनःप्रसारकों को सब से सन्देश स्वीकारना चाहिए पर उनका अवरोहण करने की अनुमति केवल आपको देना चाहिए।</string>
     <string name="dm_relays_not_found_create_now">अभी स्थापना करें</string>
     <string name="search_relays_title">खोज पुनःप्रसारक</string>
     <string name="search_relays_not_found">आपके खोज पुनःप्रसारकों की स्थापना करें</string>
+    <string name="search_relays_not_found_description">खोज तथा उपयोगकर्ता सूचक जोडने के लिए स्पष्टतः रूपांकित पुनःप्रसारक सूची बनाने से इन परिणामों में शोधन होगा।</string>
+    <string name="search_relays_not_found_editing">विषयवस्तु खोजने के लिए अथवा उपयोगकर्ता सूचक जोडने में उपयोग करनें के लिए १ - ३ पुनःप्रसारकों को जोडें। सुनिश्चित करें कि आपके चयनित पुनःप्रसारक निप॰-५० को कार्यान्वित किये हैं।</string>
+    <string name="search_relays_not_found_examples">ये अच्छे विकल्प हैं :\n - nostr.wine\n - relay.nostr.band\n - relay.noswhere.com</string>
     <string name="relay_settings">पुनःप्रसारक स्थापना विकल्प</string>
     <string name="public_home_section">सार्वजनिक मुख्य पुनःप्रसारक</string>
+    <string name="public_home_section_explainer">यह पुनःप्रसारक प्रकार आपके सभी विषयवस्तु रखता है। अमेथिस्ट आपके पत्रों को प्रकाशित करने के लिए यहाँ भेजेगा तथा अन्य लोग आपके विषयवस्तु ढूँढने के लिए इनका प्रयोग करेंगे। १ - ३ पुनःप्रसारकों को जोडें। ये व्यक्तिगत अथवा सशुल्क अथवा सार्वजनिक पुनःप्रसारक हो सकते हैं।</string>
     <string name="public_notif_section">सार्वजनिक आगतपेटिका पुनःप्रसारक</string>
+    <string name="public_notif_section_explainer">यह पुनःप्रसारक प्रकार आपके प्रकाशित पत्रों को भेजे गये सभी प्रतिवचन, टिप्पणियाँ, इष्टसूचक तथा ज्सापों को प्राप्त करता है। १ - ३ पुनःप्रसारकों को जोडें तथा सुनिश्चित करें कि वे किसी से भी पत्र स्वीकारते हैं।</string>
     <string name="private_inbox_section">सी॰सं॰ आगतपेटिका पुनःप्रसारक</string>
+    <string name="private_inbox_section_explainer">आपके निजी आगतपेटिका के रूप में १ - ३ पुनःप्रसारकों को जोडें। अन्य लोग इनका उपयोग करेंगे आपको सी॰सं॰ भेजने के लिए। सी॰सं॰ आगतपेटिका पुनःप्रसारकों को किसी से भी सन्देश स्वीकारना चाहिए पर उनका अवरोहण अनुमति केवल आपको देना चाहिए। ये अच्छे विकल्प हैं :\n - inbox.nostr.wine (सशुल्क)\n - you.nostr1.com (व्यक्तिगत पुनःप्रसारक - सशुल्क)</string>
     <string name="private_outbox_section">निजी पुनःप्रसारक</string>
+    <string name="private_outbox_section_explainer">१ - ३ पुनःप्रसारकों को जोडें उन घटनाओं को रखने के लिए जो कोई अन्य नहीं देख सकता जैसे कि पाण्डुलिपियाँ अथवा क्रमक के स्थापना विकल्प। आदर्शतः ये पुनःप्रसारक स्थानीय होने चाहिए अथवा प्रत्येक उपयोगकर्ता के विषयवस्तु अवरोहण के पूर्व परिचय प्रमाणिकरण अनिवार्य होना चाहिए।</string>
     <string name="kind_3_section">सामान्य पुनःप्रसारक</string>
+    <string name="kind_3_section_description">अमेथिस्ट इन पुनःप्रसारकों का प्रयोग करता है आपके पत्रों का अवरोहण करने के लिए।</string>
     <string name="search_section">खोज पुनःप्रसारक</string>
+    <string name="search_section_explainer">पुनःप्रसारकों की सूची जिनको किसी विषयवस्तु अथवा उपयोगकर्ताओं को खोजने में प्रयोग करना चाहिए। कोई विकल्प नहीं तो उपयोगकर्ता सूचक जोडना तथा खोज निष्क्रिय होंगे। सुनिश्चित करें कि वे निप॰-५० को कार्यान्वित किये हैं।</string>
     <string name="local_section">स्थानीय पुनःप्रसारक</string>
     <string name="local_section_explainer">पुनःप्रसारकों की सूची जो इस यन्त्र पर चल रहे हैं।</string>
-    <string name="zap_the_devs_title">क्रमलखकों को ज्साप करें!</string>
+    <string name="zap_the_devs_title">क्रमलेखकों को ज्साप करें!</string>
     <string name="zap_the_devs_description">आपका दान हमारा सहायक है परिवर्तन लाने में। प्रत्येक साट गणनीय है!</string>
     <string name="donate_now">दान करें अभी</string>
     <string name="brought_to_you_by">आप तक लाया गया इनके द्वारा :</string>
@@ -715,11 +727,11 @@
     <string name="accessibility_download_for_offline">अवरोहण</string>
     <string name="accessibility_lyrics_on">संगीत पद्य दिखाएँ</string>
     <string name="accessibility_lyrics_off">संगीत पद्य ना दिखाएँ</string>
-    <string name="accessibility_turn_on_sealed_message">आवृत संदेश निष्क्रिय। आवृत संदेश सक्रिय करने के लिए टाँकें</string>
-    <string name="accessibility_turn_off_sealed_message">आवृत संदेश सक्रिय। आवृत संदेश निष्क्रिय करने के लिए टाँकें</string>
+    <string name="accessibility_turn_on_sealed_message">समावृत संदेश निष्क्रिय। समावृत संदेश सक्रिय करने के लिए टाँकें</string>
+    <string name="accessibility_turn_off_sealed_message">समावृत संदेश सक्रिय। समावृत संदेश निष्क्रिय करने के लिए टाँकें</string>
     <string name="accessibility_send">भेजें</string>
     <string name="accessibility_play_username">उपयोगकर्ता नाम को ध्वनि के रूप में चलाएँ</string>
-    <string name="accessibility_scan_qr_code">क्यूआर क्रमचित्र परखें</string>
+    <string name="accessibility_scan_qr_code">क्यूआर॰ क्रमचित्र परखें</string>
     <string name="accessibility_navigate_to_alby">तृतीय पक्ष धनकोष प्रदाता आल्बी तक जाएँ</string>
     <string name="it_s_not_possible_to_reply_to_a_draft_note">एक टीका पाण्डुलिपि को उत्तर नहीं दे सकते</string>
     <string name="it_s_not_possible_to_quote_to_a_draft_note">एक टीका पाण्डुलिपि पर टीका नहीं लिख सकते</string>
@@ -727,4 +739,9 @@
     <string name="it_s_not_possible_to_zap_to_a_draft_note">एक टीका पाण्डुलिपि को ज्साप नहीं कर सकते</string>
     <string name="draft_note">टीका पाण्डुलिपि</string>
     <string name="load_from_text">संदेश से</string>
+    <string name="dvm_looking_for_app">क्रमक ढूँढना चालू</string>
+    <string name="dvm_waiting_status">कार्य का अनुरोध किया गया। उत्तर की प्रतीक्षा में</string>
+    <string name="dvm_requesting_job">डीवीएम॰ से कार्य का अनुरोध किया जा रहा है</string>
+    <string name="nwc_payment_request">भुगतान अनुरोध भेजा गया। आपके धनकोष से पुष्टीकरण की प्रतीक्षा में</string>
+    <string name="dvm_waiting_to_confim_payment">डीवीएम॰ से भुगतान की पुष्टीकरण अथवा परिणाम भेजने की प्रतीक्षा में</string>
 </resources>

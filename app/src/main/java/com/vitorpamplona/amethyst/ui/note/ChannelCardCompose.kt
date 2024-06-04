@@ -759,6 +759,9 @@ fun RenderContentDVMThumb(
     accountViewModel: AccountViewModel,
     nav: (String) -> Unit,
 ) {
+    // downloads user metadata to pre-load the NIP-65 relays.
+    val user = baseNote.author?.live()?.metadata?.observeAsState()
+
     val card = observeAppDefinition(appDefinitionNote = baseNote)
 
     LeftPictureLayout(
@@ -775,7 +778,16 @@ fun RenderContentDVMThumb(
                                 .clip(QuoteBorder),
                     )
                 }
-            } ?: run { DisplayAuthorBanner(baseNote) }
+            } ?: run {
+                user?.value?.user?.let {
+                    BannerImage(
+                        it,
+                        Modifier
+                            .fillMaxSize()
+                            .clip(QuoteBorder),
+                    )
+                }
+            }
         },
         onTitleRow = {
             Text(

@@ -82,6 +82,7 @@ import com.vitorpamplona.amethyst.ui.note.types.DisplayRelaySet
 import com.vitorpamplona.amethyst.ui.note.types.EditState
 import com.vitorpamplona.amethyst.ui.note.types.FileHeaderDisplay
 import com.vitorpamplona.amethyst.ui.note.types.FileStorageHeaderDisplay
+import com.vitorpamplona.amethyst.ui.note.types.JustVideoDisplay
 import com.vitorpamplona.amethyst.ui.note.types.RenderAppDefinition
 import com.vitorpamplona.amethyst.ui.note.types.RenderAudioHeader
 import com.vitorpamplona.amethyst.ui.note.types.RenderAudioTrack
@@ -174,6 +175,7 @@ import com.vitorpamplona.quartz.events.ReportEvent
 import com.vitorpamplona.quartz.events.RepostEvent
 import com.vitorpamplona.quartz.events.TextNoteEvent
 import com.vitorpamplona.quartz.events.TextNoteModificationEvent
+import com.vitorpamplona.quartz.events.VideoEvent
 import com.vitorpamplona.quartz.events.VideoHorizontalEvent
 import com.vitorpamplona.quartz.events.VideoVerticalEvent
 import com.vitorpamplona.quartz.events.WikiNoteEvent
@@ -303,8 +305,9 @@ fun AcceptableNote(
                     )
                 }
             is BadgeDefinitionEvent -> BadgeDisplay(baseNote = baseNote)
-            is FileHeaderEvent -> FileHeaderDisplay(baseNote, false, accountViewModel)
-            is FileStorageHeaderEvent -> FileStorageHeaderDisplay(baseNote, false, accountViewModel)
+            is FileHeaderEvent -> FileHeaderDisplay(baseNote, false, false, accountViewModel)
+            is FileStorageHeaderEvent -> FileStorageHeaderDisplay(baseNote, false, false, accountViewModel)
+            is VideoEvent -> JustVideoDisplay(baseNote, false, false, accountViewModel)
             else ->
                 LongPressToQuickAction(baseNote = baseNote, accountViewModel = accountViewModel) { showPopup ->
                     CheckNewAndRenderNote(
@@ -587,8 +590,8 @@ private fun RenderNoteRow(
     val noteEvent = baseNote.event
     when (noteEvent) {
         is AppDefinitionEvent -> RenderAppDefinition(baseNote, accountViewModel, nav)
-        is AudioTrackEvent -> RenderAudioTrack(baseNote, accountViewModel, nav)
-        is AudioHeaderEvent -> RenderAudioHeader(baseNote, accountViewModel, nav)
+        is AudioTrackEvent -> RenderAudioTrack(baseNote, false, accountViewModel, nav)
+        is AudioHeaderEvent -> RenderAudioHeader(baseNote, false, accountViewModel, nav)
         is DraftEvent -> RenderDraft(baseNote, quotesLeft, unPackReply, backgroundColor, accountViewModel, nav)
         is ReactionEvent -> RenderReaction(baseNote, quotesLeft, backgroundColor, accountViewModel, nav)
         is RepostEvent -> RenderRepost(baseNote, quotesLeft, backgroundColor, accountViewModel, nav)
@@ -706,10 +709,10 @@ private fun RenderNoteRow(
                 nav,
             )
         }
-        is FileHeaderEvent -> FileHeaderDisplay(baseNote, true, accountViewModel)
-        is VideoHorizontalEvent -> VideoDisplay(baseNote, makeItShort, canPreview, backgroundColor, accountViewModel, nav)
-        is VideoVerticalEvent -> VideoDisplay(baseNote, makeItShort, canPreview, backgroundColor, accountViewModel, nav)
-        is FileStorageHeaderEvent -> FileStorageHeaderDisplay(baseNote, true, accountViewModel)
+        is FileHeaderEvent -> FileHeaderDisplay(baseNote, true, false, accountViewModel)
+        is VideoHorizontalEvent -> VideoDisplay(baseNote, makeItShort, canPreview, backgroundColor, false, accountViewModel, nav)
+        is VideoVerticalEvent -> VideoDisplay(baseNote, makeItShort, canPreview, backgroundColor, false, accountViewModel, nav)
+        is FileStorageHeaderEvent -> FileStorageHeaderDisplay(baseNote, true, false, accountViewModel)
         is CommunityPostApprovalEvent -> {
             RenderPostApproval(
                 baseNote,

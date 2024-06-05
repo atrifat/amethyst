@@ -32,16 +32,16 @@ import com.vitorpamplona.amethyst.model.Note
 import com.vitorpamplona.amethyst.ui.components.SensitivityWarning
 import com.vitorpamplona.amethyst.ui.components.ZoomableContentView
 import com.vitorpamplona.amethyst.ui.screen.loggedIn.AccountViewModel
-import com.vitorpamplona.quartz.events.FileHeaderEvent
+import com.vitorpamplona.quartz.events.VideoEvent
 
 @Composable
-fun FileHeaderDisplay(
+fun JustVideoDisplay(
     note: Note,
     roundedCorner: Boolean,
     isFiniteHeight: Boolean,
     accountViewModel: AccountViewModel,
 ) {
-    val event = (note.event as? FileHeaderEvent) ?: return
+    val event = (note.event as? VideoEvent) ?: return
     val fullUrl = event.url() ?: return
 
     val content by

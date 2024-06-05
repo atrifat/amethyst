@@ -66,6 +66,7 @@ fun VideoDisplay(
     makeItShort: Boolean,
     canPreview: Boolean,
     backgroundColor: MutableState<Color>,
+    isFiniteHeight: Boolean,
     accountViewModel: AccountViewModel,
     nav: (String) -> Unit,
 ) {
@@ -84,7 +85,7 @@ fun VideoDisplay(
             val hash = event.hash()
             val dimensions = event.dimensions()
             val description = event.content.ifBlank { null } ?: event.alt()
-            val isImage = RichTextParser.isImageUrl(fullUrl)
+            val isImage = event.mimeType()?.startsWith("image/") == true || RichTextParser.isImageUrl(fullUrl)
             val uri = note.toNostrUri()
 
             mutableStateOf<BaseMediaContent>(
@@ -143,6 +144,7 @@ fun VideoDisplay(
                 ZoomableContentView(
                     content = content,
                     roundedCorner = true,
+                    isFiniteHeight = isFiniteHeight,
                     accountViewModel = accountViewModel,
                 )
             }

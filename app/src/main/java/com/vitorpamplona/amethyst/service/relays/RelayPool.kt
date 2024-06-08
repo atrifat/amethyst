@@ -21,6 +21,7 @@
 package com.vitorpamplona.amethyst.service.relays
 
 import androidx.compose.runtime.Immutable
+import com.vitorpamplona.amethyst.model.RelaySetupInfo
 import com.vitorpamplona.amethyst.service.checkNotInMainThread
 import com.vitorpamplona.quartz.events.Event
 import com.vitorpamplona.quartz.events.EventInterface
@@ -91,6 +92,7 @@ object RelayPool : Relay.Listener {
         feedTypes: Set<FeedType>?,
         onConnected: (Relay) -> Unit,
         onDone: (() -> Unit)?,
+        timeout: Long = 60000,
     ) {
         val relay = Relay(url, true, true, feedTypes ?: emptySet())
         addRelay(relay)
@@ -103,7 +105,7 @@ object RelayPool : Relay.Listener {
             onConnected(relay)
 
             GlobalScope.launch(Dispatchers.IO) {
-                delay(60000) // waits for a reply
+                delay(timeout) // waits for a reply
                 relay.disconnect()
                 removeRelay(relay)
 
@@ -147,7 +149,7 @@ object RelayPool : Relay.Listener {
     }
 
     fun sendToSelectedRelays(
-        list: List<Relay>,
+        list: List<RelaySetupInfo>,
         signedEvent: EventInterface,
     ) {
         list.forEach { relay -> relays.filter { it.url == relay.url }.forEach { it.sendOverride(signedEvent) } }

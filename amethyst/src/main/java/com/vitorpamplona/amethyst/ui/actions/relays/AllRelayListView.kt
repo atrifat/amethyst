@@ -38,8 +38,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -69,6 +71,7 @@ fun AllRelayListView(
 ) {
     val kind3ViewModel: Kind3RelayListViewModel = viewModel()
     val kind3FeedState by kind3ViewModel.relays.collectAsStateWithLifecycle()
+    val kind3Proposals by kind3ViewModel.proposedRelays.collectAsStateWithLifecycle()
 
     val dmViewModel: DMRelayListViewModel = viewModel()
     val dmFeedState by dmViewModel.relays.collectAsStateWithLifecycle()
@@ -112,6 +115,8 @@ fun AllRelayListView(
 
                             Text(
                                 text = stringRes(R.string.relay_settings),
+                                modifier = Modifier.weight(1f),
+                                textAlign = TextAlign.Center,
                                 style = MaterialTheme.typography.titleLarge,
                                 overflow = TextOverflow.Ellipsis,
                                 maxLines = 1,
@@ -229,6 +234,16 @@ fun AllRelayListView(
                         )
                     }
                     renderKind3Items(kind3FeedState, kind3ViewModel, accountViewModel, onClose, nav, relayToAdd)
+
+                    if (kind3Proposals.isNotEmpty()) {
+                        item {
+                            SettingsCategory(
+                                stringRes(R.string.kind_3_recommended_section),
+                                stringRes(R.string.kind_3_recommended_section_description),
+                            )
+                        }
+                        renderKind3ProposalItems(kind3Proposals, kind3ViewModel, accountViewModel, onClose, nav)
+                    }
                 }
             }
         }

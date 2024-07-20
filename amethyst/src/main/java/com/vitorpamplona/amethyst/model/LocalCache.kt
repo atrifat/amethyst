@@ -149,8 +149,8 @@ object LocalCache {
 
     val deletionIndex = DeletionIndex()
 
-    private val observablesByKindAndETag = ConcurrentHashMap<Int, ConcurrentHashMap<HexKey, LatestByKindWithETag<Event>>>(10)
-    private val observablesByKindAndAuthor = ConcurrentHashMap<Int, ConcurrentHashMap<HexKey, LatestByKindAndAuthor<Event>>>(10)
+    val observablesByKindAndETag = ConcurrentHashMap<Int, ConcurrentHashMap<HexKey, LatestByKindWithETag<Event>>>(10)
+    val observablesByKindAndAuthor = ConcurrentHashMap<Int, ConcurrentHashMap<HexKey, LatestByKindAndAuthor<Event>>>(10)
 
     fun <T : Event> observeETag(
         kind: Int,
@@ -211,9 +211,10 @@ object LocalCache {
     }
 
     private fun updateObservables(event: Event) {
-        val observablesOfKind = observablesByKindAndETag[event.kind] ?: return
-        event.forEachTaggedEvent {
-            observablesOfKind[it]?.updateIfMatches(event)
+        observablesByKindAndETag[event.kind]?.let { observablesOfKind ->
+            event.forEachTaggedEvent {
+                observablesOfKind[it]?.updateIfMatches(event)
+            }
         }
 
         observablesByKindAndAuthor[event.kind]?.get(event.pubKey)?.updateIfMatches(event)
@@ -2370,7 +2371,7 @@ object LocalCache {
     }
 
     // Observers line up here.
-    val live: LocalCacheLiveData = LocalCacheLiveData()
+    val live: LocalCacheFlow = LocalCacheFlow()
 
     private fun refreshObservers(newNote: Note) {
         updateObservables(newNote.event as Event)
@@ -2659,7 +2660,7 @@ object LocalCache {
 }
 
 @Stable
-class LocalCacheLiveData {
+class LocalCacheFlow {
     private val _newEventBundles = MutableSharedFlow<Set<Note>>(0, 10, BufferOverflow.DROP_OLDEST)
     val newEventBundles = _newEventBundles.asSharedFlow() // read-only public view
 

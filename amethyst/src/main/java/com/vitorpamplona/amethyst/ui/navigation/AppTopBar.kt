@@ -130,7 +130,6 @@ import com.vitorpamplona.amethyst.ui.stringRes
 import com.vitorpamplona.amethyst.ui.theme.BottomTopHeight
 import com.vitorpamplona.amethyst.ui.theme.DividerThickness
 import com.vitorpamplona.amethyst.ui.theme.DoubleHorzSpacer
-import com.vitorpamplona.amethyst.ui.theme.HalfVertSpacer
 import com.vitorpamplona.amethyst.ui.theme.HeaderPictureModifier
 import com.vitorpamplona.amethyst.ui.theme.Size20Modifier
 import com.vitorpamplona.amethyst.ui.theme.Size22Modifier
@@ -152,6 +151,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combineTransform
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
@@ -699,8 +700,33 @@ class FollowListViewModel(
         )
     val defaultLists = persistentListOf(kind3Follow, globalFollow, muteListFollow)
 
+    val livePeopleListsFlow: Flow<List<CodeName>> by lazy {
+        flow {
+            checkNotInMainThread()
+
+            emit(getPeopleLists())
+            emitAll(livePeopleListsFlowObservable)
+        }
+    }
+
+    fun getPeopleLists(): List<CodeName> =
+        LocalCache.addressables
+            .mapNotNull { _, addressableNote ->
+                val event = (addressableNote.event as? PeopleListEvent)
+                // Has to have an list
+                if (
+                    event != null &&
+                    event.pubKey == account.userProfile().pubkeyHex &&
+                    (event.hasAnyTaggedUser() || event.publicAndPrivateUserCache?.isNotEmpty() == true)
+                ) {
+                    CodeName(event.address().toTag(), PeopleListName(addressableNote), CodeNameType.PEOPLE_LIST)
+                } else {
+                    null
+                }
+            }.sortedBy { it.name.name() }
+
     @OptIn(ExperimentalCoroutinesApi::class)
-    val livePeopleListsFlow: Flow<List<CodeName>> =
+    val livePeopleListsFlowObservable: Flow<List<CodeName>> =
         LocalCache.live.newEventBundles.transformLatest { newNotes ->
             val hasNewList =
                 newNotes.any {
@@ -728,30 +754,13 @@ class FollowListViewModel(
                 }
 
             if (hasNewList) {
-                val newFollowLists =
-                    LocalCache.addressables
-                        .mapNotNull { _, addressableNote ->
-                            val event = (addressableNote.event as? PeopleListEvent)
-                            // Has to have an list
-                            if (
-                                event != null &&
-                                event.pubKey == account.userProfile().pubkeyHex &&
-                                (event.tags.size > 1 || event.content.length > 50)
-                            ) {
-                                CodeName(event.address().toTag(), PeopleListName(addressableNote), CodeNameType.PEOPLE_LIST)
-                            } else {
-                                null
-                            }
-                        }.sortedBy { it.name.name() }
-
-                emit(newFollowLists)
+                emit(getPeopleLists())
             }
         }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val liveKind3FollowsFlow: Flow<List<CodeName>> =
         account.userProfile().flow().follows.stateFlow.transformLatest {
-
             val communities =
                 it.user.cachedFollowingCommunitiesSet().mapNotNull {
                     LocalCache.checkGetOrCreateAddressableNote(it)?.let { communityNote ->
@@ -977,7 +986,6 @@ fun FlexibleTopBarWithBackButton(
             navigationIcon = { IconButton(onClick = popBack) { ArrowBackIcon() } },
             actions = {},
         )
-        Spacer(modifier = HalfVertSpacer)
         HorizontalDivider(thickness = DividerThickness)
     }
 }
@@ -1070,6 +1078,18 @@ fun debugState(context: Context) {
             LocalCache.users.filter { _, it -> it.latestMetadata != null }.size +
             " / " +
             LocalCache.users.size(),
+    )
+    Log.d(
+        "STATE DUMP",
+        "Deletion Events: " +
+            LocalCache.deletionIndex.size(),
+    )
+    Log.d(
+        "STATE DUMP",
+        "Observable Events: " +
+            LocalCache.observablesByKindAndETag.size +
+            " / " +
+            LocalCache.observablesByKindAndAuthor.size,
     )
 
     Log.d(

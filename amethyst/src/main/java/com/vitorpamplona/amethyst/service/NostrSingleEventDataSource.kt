@@ -319,6 +319,9 @@ fun groupByEOSEPresence(notes: Set<Note>): Collection<List<Note>> =
                 .sorted()
                 .joinToString(",")
         }.values
+        .map {
+            it.sortedBy { it.idHex } // important to keep in order otherwise the Relay thinks the filter has changed and we REQ again
+        }
 
 fun groupByEOSEPresence(users: Iterable<User>): Collection<List<User>> =
     users
@@ -327,6 +330,9 @@ fun groupByEOSEPresence(users: Iterable<User>): Collection<List<User>> =
                 .sorted()
                 .joinToString(",")
         }.values
+        .map {
+            it.sortedBy { it.pubkeyHex } // important to keep in order otherwise the Relay thinks the filter has changed and we REQ again
+        }
 
 fun findMinimumEOSEs(notes: List<Note>): Map<String, EOSETime> {
     val minLatestEOSEs = mutableMapOf<String, EOSETime>()
